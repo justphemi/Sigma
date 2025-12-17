@@ -71,9 +71,29 @@ class CodeGen {
         }
         
         if (node->type == NODE_FUNC_CALL) {
-            // Check for type() function
-            if (node->value == "type" && node->children.size() == 1) {
+            // Check for check_type() function
+            if (node->value == "check_type" && node->children.size() == 1) {
                 return "sigma_type_of(" + genExpr(node->children[0].get()) + ")";
+            }
+            // Check for to_int() function
+            if (node->value == "to_int" && node->children.size() == 1) {
+                return "sigma_to_int(" + genExpr(node->children[0].get()) + ")";
+            }
+            // Check for to_dec() function
+            if (node->value == "to_dec" && node->children.size() == 1) {
+                return "sigma_to_dec(" + genExpr(node->children[0].get()) + ")";
+            }
+            // Check for to_str() function
+            if (node->value == "to_str" && node->children.size() == 1) {
+                return "sigma_to_str(" + genExpr(node->children[0].get()) + ")";
+            }
+            // Check for random() function
+            if (node->value == "random" && node->children.size() == 1) {
+                return "sigma_random(" + genExpr(node->children[0].get()) + ")";
+            }
+            // Check for random_range() function
+            if (node->value == "random_range" && node->children.size() == 2) {
+                return "sigma_random_range(" + genExpr(node->children[0].get()) + ", " + genExpr(node->children[1].get()) + ")";
             }
             
             std::string call = node->value + "(";
@@ -306,7 +326,8 @@ public:
         code << "#include <stdio.h>\n";
         code << "#include <stdlib.h>\n";
         code << "#include <string.h>\n";
-        code << "#include <math.h>\n\n";
+        code << "#include <math.h>\n";
+        code << "#include <time.h>\n\n";
         
         // Type definitions
         code << "typedef enum {\n";
@@ -352,7 +373,12 @@ public:
         code << "void sigma_print(SigmaValue v);\n";
         code << "void sigma_error(const char* msg);\n";
         code << "SigmaValue sigma_input(const char* prompt);\n";
-        code << "SigmaValue sigma_type_of(SigmaValue v);\n\n";
+        code << "SigmaValue sigma_type_of(SigmaValue v);\n";
+        code << "SigmaValue sigma_to_int(SigmaValue v);\n";
+        code << "SigmaValue sigma_to_dec(SigmaValue v);\n";
+        code << "SigmaValue sigma_to_str(SigmaValue v);\n";
+        code << "SigmaValue sigma_random(SigmaValue digits);\n";
+        code << "SigmaValue sigma_random_range(SigmaValue min, SigmaValue max);\n\n";
         
         // Basic functions
         code << "void sigma_error(const char* msg) {\n";
@@ -427,6 +453,97 @@ public:
         code << "    case TYPE_OBJECT: return sigma_make_string(\"obj\");\n";
         code << "    default: return sigma_make_string(\"unknown\");\n";
         code << "  }\n";
+        code << "}\n\n";
+        
+        // Type conversion functions
+        code << "SigmaValue sigma_to_int(SigmaValue v) {\n";
+        code << "  switch (v.type) {\n";
+        code << "    case TYPE_NUMBER:\n";
+        code << "      return sigma_make_number(floor(v.as.number));\n";
+        code << "    case TYPE_STRING: {\n";
+        code << "      double num = atof(v.as.string);\n";
+        code << "      return sigma_make_number(floor(num));\n";
+        code << "    }\n";
+        code << "    case TYPE_BOOL:\n";
+        code << "      return sigma_make_number(v.as.boolean ? 1.0 : 0.0);\n";
+        code << "    default:\n";
+        code << "      return sigma_make_number(0.0);\n";
+        code << "  }\n";
+        code << "}\n\n";
+        
+        code << "SigmaValue sigma_to_dec(SigmaValue v) {\n";
+        code << "  switch (v.type) {\n";
+        code << "    case TYPE_NUMBER:\n";
+        code << "      return v;\n";
+        code << "    case TYPE_STRING:\n";
+        code << "      return sigma_make_number(atof(v.as.string));\n";
+        code << "    case TYPE_BOOL:\n";
+        code << "      return sigma_make_number(v.as.boolean ? 1.0 : 0.0);\n";
+        code << "    default:\n";
+        code << "      return sigma_make_number(0.0);\n";
+        code << "  }\n";
+        code << "}\n\n";
+        
+        code << "SigmaValue sigma_to_str(SigmaValue v) {\n";
+        code << "  char buffer[64];\n";
+        code << "  switch (v.type) {\n";
+        code << "    case TYPE_NIL:\n";
+        code << "      return sigma_make_string(\"nil\");\n";
+        code << "    case TYPE_NUMBER:\n";
+        code << "      if (v.as.number == floor(v.as.number)) {\n";
+        code << "        sprintf(buffer, \"%.0f\", v.as.number);\n";
+        code << "      } else {\n";
+        code << "        sprintf(buffer, \"%g\", v.as.number);\n";
+        code << "      }\n";
+        code << "      return sigma_make_string(buffer);\n";
+        code << "    case TYPE_STRING:\n";
+        code << "      return v;\n";
+        code << "    case TYPE_BOOL:\n";
+        code << "      return sigma_make_string(v.as.boolean ? \"true\" : \"false\");\n";
+        code << "    case TYPE_ARRAY:\n";
+        code << "      return sigma_make_string(\"[array]\");\n";
+        code << "    case TYPE_OBJECT:\n";
+        code << "      return sigma_make_string(\"[object]\");\n";
+        code << "    default:\n";
+        code << "      return sigma_make_string(\"unknown\");\n";
+        code << "  }\n";
+        code << "}\n\n";
+        
+        // Random number functions
+        code << "SigmaValue sigma_random(SigmaValue digits) {\n";
+        code << "  static int seeded = 0;\n";
+        code << "  if (!seeded) {\n";
+        code << "    srand(time(NULL));\n";
+        code << "    seeded = 1;\n";
+        code << "  }\n";
+        code << "  int d = (int)digits.as.number;\n";
+        code << "  if (d <= 0) d = 1;\n";
+        code << "  if (d > 9) d = 9;\n";
+        code << "  int min = 1;\n";
+        code << "  int max = 9;\n";
+        code << "  for (int i = 1; i < d; i++) {\n";
+        code << "    min *= 10;\n";
+        code << "    max = max * 10 + 9;\n";
+        code << "  }\n";
+        code << "  int result = min + rand() % (max - min + 1);\n";
+        code << "  return sigma_make_number((double)result);\n";
+        code << "}\n\n";
+        
+        code << "SigmaValue sigma_random_range(SigmaValue min_val, SigmaValue max_val) {\n";
+        code << "  static int seeded = 0;\n";
+        code << "  if (!seeded) {\n";
+        code << "    srand(time(NULL));\n";
+        code << "    seeded = 1;\n";
+        code << "  }\n";
+        code << "  int min = (int)min_val.as.number;\n";
+        code << "  int max = (int)max_val.as.number;\n";
+        code << "  if (min > max) {\n";
+        code << "    int temp = min;\n";
+        code << "    min = max;\n";
+        code << "    max = temp;\n";
+        code << "  }\n";
+        code << "  int result = min + rand() % (max - min + 1);\n";
+        code << "  return sigma_make_number((double)result);\n";
         code << "}\n\n";
         
         // Array functions

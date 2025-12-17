@@ -91,7 +91,7 @@
         },
         {
           "name": "support.function.builtin.sigma",
-          "match": "\\b(yap|type)\\b"
+          "match": "\\b(yap|check_type|to_int|to_dec|to_str)\\b"
         },
         {
           "name": "meta.function-call.sigma",

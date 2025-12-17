@@ -56,6 +56,19 @@ class Parser {
         }
         if (check(TOK_IDENT)) {
             auto name = advance().value;
+            
+            // Check for function call (built-in functions like check_type, to_int, etc.)
+            if (check(TOK_LPAREN)) {
+                auto call = std::make_unique<ASTNode>(NODE_FUNC_CALL, name);
+                advance(); // (
+                while (!check(TOK_RPAREN)) {
+                    call->children.push_back(parseExpression());
+                    if (check(TOK_COMMA)) advance();
+                }
+                expect(TOK_RPAREN);
+                return call;
+            }
+            
             auto node = std::make_unique<ASTNode>(NODE_IDENT, name);
             
             while (true) {
@@ -336,6 +349,18 @@ class Parser {
         
         if (check(TOK_IDENT)) {
             auto name = advance().value;
+            
+            // Check for direct function call (e.g., check_type(x), to_int(x))
+            if (check(TOK_LPAREN)) {
+                auto call = std::make_unique<ASTNode>(NODE_FUNC_CALL, name);
+                advance(); // (
+                while (!check(TOK_RPAREN)) {
+                    call->children.push_back(parseExpression());
+                    if (check(TOK_COMMA)) advance();
+                }
+                expect(TOK_RPAREN);
+                return call;
+            }
             
             // Check for function call with .run() or .sort()
             if (check(TOK_DOT)) {

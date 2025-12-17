@@ -1,11 +1,19 @@
-````markdown
 # Sigma Programming Language
 
-![Sigma Logo](https://i.ibb.co/wNcYc2gs/svgviewer-png-output.png)
+<p align="center">
+  <img src="https://i.ibb.co/wNcYc2gs/svgviewer-png-output.png" width="200" alt="Sigma Logo">
+</p>
 
-A blazingly fast compiled programming language with a clean, unique syntax
+<p align="center">
+  <strong>A blazingly fast compiled programming language with a clean, unique syntax</strong>
+</p>
 
-[Installation](#installation) • [Quick Start](#quick-start) • [Syntax](#syntax) • [Examples](#examples)
+<p align="center">
+  <a href="#installation">Installation</a> •
+  <a href="#quick-start">Quick Start</a> •
+  <a href="#syntax">Syntax</a> •
+  <a href="#examples">Examples</a>
+</p>
 
 ---
 
@@ -14,14 +22,11 @@ A blazingly fast compiled programming language with a clean, unique syntax
 Sigma is a compiled programming language that combines Python's simplicity with C's performance. It compiles directly to optimized C code, making it extremely fast even on low-end devices.
 
 **Why Sigma?**
-
-- Fast - Compiles to optimized C, runs at native speed  
-- Simple - Clean syntax, easy to learn  
-- Dynamic - Python-like dynamic typing  
-- Minimal - One binary, no dependencies  
-- Beautiful - Unique syntax that makes code readable  
-
----
+-  **Fast** - Compiles to optimized C, runs at native speed
+-  **Simple** - Clean syntax, easy to learn
+-  **Dynamic** - Python-like dynamic typing
+-  **Minimal** - One binary, no dependencies
+-  **Beautiful** - Unique syntax that makes code readable
 
 ## Installation
 
@@ -29,25 +34,9 @@ Sigma is a compiled programming language that combines Python's simplicity with 
 
 ```bash
 git clone https://github.com/justphemi/Sigma.git
-cd Sigma
+cd sigma-lang
 chmod +x build.sh
 ./build.sh
-````
-
-### Windows (via Git Bash or WSL)
-
-```bash
-git clone https://github.com/justphemi/Sigma.git
-cd Sigma
-bash build.sh
-```
-
-Or, using PowerShell with MinGW installed:
-
-```powershell
-git clone https://github.com/justphemi/Sigma.git
-cd Sigma
-.\build.ps1
 ```
 
 ### Verify Installation
@@ -56,13 +45,15 @@ cd Sigma
 sig --version
 ```
 
-### VS Code Extension (Optional)
+### VS Code Extension (Optional but Recommended)
+
+Get syntax highlighting and file icons:
 
 ```bash
 code --install-extension sigma-icons-0.0.1.vsix
 ```
 
-Or search for "Sigma" in the VS Code Extensions marketplace.
+Or search "Sigma" in VS Code Extensions marketplace.
 
 ---
 
@@ -82,7 +73,6 @@ sig hello.sgm
 ```
 
 Output:
-
 ```
 Hello, Sigma!
 ```
@@ -91,21 +81,28 @@ Hello, Sigma!
 
 ## Syntax
 
-### Variables
+### Variables (Dynamic Typing)
 
 ```sigma
+-- Numbers
 age: 45
 weight: 61.835
+
+-- Strings
 name: "Christopher Jenkins"
+
+-- Booleans
 isAdult: true
 ```
 
-### Constants
+### Constants (Immutable)
 
 ```sigma
 $fixed PI: 3.14159
 $fixed APP_NAME: "Sigma"
 $fixed MAX_USERS: 1000
+
+-- PI: 3.14  -- ERROR: Cannot reassign constant variable
 ```
 
 ### Functions
@@ -116,24 +113,38 @@ fn add_numbers: (a, b) {
 }
 
 result: add_numbers.run(5, 3)
-yap(result)
+yap(result)  -- Prints: 8
 ```
 
 ### Conditionals
 
 ```sigma
 age: 20
+
 $if age > 18 :: yap("Adult")
 $el :: yap("Minor")
+
+-- Multi-line
+$if age > 65 :: {
+    yap("Senior citizen")
+    yap("Eligible for benefits")
+}
+$el :: {
+    yap("Working age")
+}
 ```
 
 ### Loops
 
+**For Loop:**
 ```sigma
 $for (i: 0, i < 10, i++) :: {
     yap(i)
 }
+```
 
+**While Loop:**
+```sigma
 counter: 0
 $while counter < 5 :: {
     yap(counter)
@@ -144,24 +155,41 @@ $while counter < 5 :: {
 ### Arrays
 
 ```sigma
+-- Create arrays
 numbers: [1, 2, 3, 4, 5]
-yap(numbers[0])
+names: ["Alice", "Bob", "Charlie"]
+
+-- Access elements
+yap(numbers[0])  -- Prints: 1
+
+-- Update elements
 numbers[0]: 10
-sorted_asc: numbers.sort("asc")
-sorted_desc: numbers.sort("desc")
+yap(numbers[0])  -- Prints: 10
+
+-- Sort arrays
+sorted_asc: numbers.sort("asc")   -- Ascending
+sorted_desc: numbers.sort("desc")  -- Descending
+yap(sorted_asc)
 ```
 
 ### Objects
 
 ```sigma
+-- Create objects
 player: {
     name:: "Peters",
     age:: 24,
     score:: 1500
 }
 
-yap(player.name)
+-- Access properties
+yap(player.name)   -- Prints: Peters
+yap(player.score)  -- Prints: 1500
+
+-- Update properties
 player.score: 2000
+player.age: 25
+yap(player.score)  -- Prints: 2000
 ```
 
 ### Error Handling
@@ -169,26 +197,29 @@ player.score: 2000
 ```sigma
 $try :: {
     result: 100
+    yap("Operation successful")
     yap(result)
 } catch(e) :: {
-    yap("Error occurred")
+    yap("An error occurred!")
 }
 ```
 
 ### Comments
 
 ```sigma
--- Single line
+-- Single line comment
+
 ---
 Multi-line
 comment
+block
 ---
 ```
 
 ### Built-in Functions
 
 ```sigma
-yap("Hello")
+yap("Hello")           -- Print to console
 ```
 
 ---
@@ -198,25 +229,58 @@ yap("Hello")
 ### Array Manipulation
 
 ```sigma
+-- Create and manipulate arrays
 numbers: [5, 2, 8, 1, 9, 3]
+yap(numbers)
+
+-- Sort ascending
 sorted: numbers.sort("asc")
+yap(sorted)  -- [1, 2, 3, 5, 8, 9]
+
+-- Sort descending
 reversed: numbers.sort("desc")
+yap(reversed)  -- [9, 8, 5, 3, 2, 1]
+
+-- Access and modify
+yap(numbers[0])
 numbers[0]: 100
+yap(numbers[0])
 ```
 
 ### Object Management
 
 ```sigma
-user: {username:: "john_doe", email:: "john@example.com", age:: 28, verified:: true}
+-- Create a user profile
+user: {
+    username:: "john_doe",
+    email:: "john@example.com",
+    age:: 28,
+    verified:: true
+}
+
+-- Display user info
+yap(user.username)
+yap(user.email)
+
+-- Update user data
 user.age: 29
 user.verified: false
+yap(user.age)
 ```
 
 ### Constants Protection
 
 ```sigma
+-- Define constants
 $fixed MAX_SPEED: 120
 $fixed APP_VERSION: "1.0.0"
+$fixed COLORS: ["red", "green", "blue"]
+
+yap(MAX_SPEED)
+yap(APP_VERSION)
+
+-- This would cause an error:
+-- MAX_SPEED: 150  -- ERROR: Cannot reassign constant
 ```
 
 ### Fibonacci
@@ -228,7 +292,7 @@ fn fibonacci: (n) {
 }
 
 result: fibonacci.run(10)
-yap(result)
+yap("Fibonacci(10) = " + result)
 ```
 
 ### FizzBuzz
@@ -259,7 +323,7 @@ fn divide: (a, b) {
 
 $try :: {
     result: divide.run(10, 2)
-    yap(result)
+    yap("Result: " + result)
 } catch(e) :: {
     yap("Calculation failed")
 }
@@ -269,36 +333,39 @@ $try :: {
 
 ## Current Features
 
-* Variables with dynamic typing
-* Constants with `$fixed`
-* Functions with parameters
-* Conditionals (`$if`, `$el`)
-* Loops (`$for`, `$while`)
-* Arrays with indexing and updates
-* Array sorting (`.sort("asc")`, `.sort("desc")`)
-* Objects with property access
-* Try-catch error handling
-* Print function (`yap`)
-* Recursion support
-
----
+✅ Variables with dynamic typing  
+✅ **Constants with `$fixed` keyword**  
+✅ Functions with parameters  
+✅ Conditionals (`$if`, `$el`)  
+✅ Loops (`$for`, `$while`)  
+✅ **Arrays with indexing and updates**  
+✅ **Array sorting (`.sort("asc")`, `.sort("desc")`)**  
+✅ **Objects with property access**  
+✅ **Object property updates**  
+✅ **Try-catch error handling**  
+✅ String concatenation  
+✅ Arithmetic operations  
+✅ Comparison operators  
+✅ Comments (single & multi-line)  
+✅ Print function (`yap`)  
+✅ Recursion support  
 
 ## Roadmap
 
-* More array methods (`.push()`, `.pop()`, `.length()`, `.map()`, `.filter()`)
-* String methods (`.length()`, `.upper()`, `.lower()`, `.split()`)
-* File I/O operations
-* Timing functions
-* Import/module system
-* Standard library
-* Package manager
-* Better error messages with line numbers
+🔜 More array methods (`.push()`, `.pop()`, `.length()`, `.map()`, `.filter()`)  
+🔜 String methods (`.length()`, `.upper()`, `.lower()`, `.split()`)  
+🔜 File I/O operations  
+🔜 Timing functions (`$time_start`, `$time_end`)  
+🔜 Import/module system  
+🔜 Standard library  
+🔜 Package manager  
+🔜 Better error messages with line numbers  
 
 ---
 
 ## Performance
 
-Sigma compiles to C with `-O3` optimization:
+Sigma compiles to C with `-O3` optimization, making it extremely fast:
 
 ```
 Benchmark: Sum 1 million numbers
@@ -307,85 +374,49 @@ Python: 0.089s
 Node:   0.021s
 ```
 
+Sigma is **30x faster than Python** and **7x faster than Node.js** for computational tasks.
+
 ---
 
 ## Language Design
 
-Reserved keywords: `$if`, `$el`, `$for`, `$while`, `$fixed`, `$try`
-Built-in functions: snake_case with `$` prefix
-User functions: flexible naming
+**Reserved Keywords:**
 
----
+All control flow keywords start with `$`:
+- `$if`, `$el` - Conditionals
+- `$for`, `$while` - Loops
+- `$fixed` - Constants
+- `$try` - Error handling
+- `$time_start`, `$time_end` - Timing (planned)
+- `$set_timeout`, `$set_interval` - Async (planned)
 
-## Contributing
+**Built-in Functions:**
 
-1. Fork the repo
-2. Create a feature branch
-3. Commit changes
-4. Push branch
-5. Open Pull Request
+Use snake_case with `$` prefix:
+- `$to_uppercase()`, `$to_lowercase()` (planned)
+- `$parse_int()`, `$parse_float()` (planned)
 
----
+**User Functions:**
 
-## Building from Source
-
-Requirements: C++ compiler, CMake 3.10+, GCC
-
-```bash
-mkdir build && cd build
-cmake ..
-make
-sudo make install
+Use any naming style:
+```sigma
+fn my_function: (param) { }
+fn myFunction: (param) { }
+fn MyFunction: (param) { }
 ```
-
----
-
-## Project Structure
-
-```
-sigma/
-├── compiler/
-├── include/
-├── examples/
-├── vscode-extension/
-└── build.sh
-```
-
----
-
-## How It Works
-
-```
-.sgm → Lexer → Parser → AST → Code Generator → C → GCC → Binary
-```
-
----
-
-## FAQ
-
-**Why Sigma?** Python simplicity + C performance
-**Production-ready?** Early release v0.2
-**Web development?** Not yet
-**Difference from Go/Rust/Zig?** Simpler, faster to write
 
 ---
 
 ## License
 
-MIT
+MIT License - feel free to use Sigma in your projects!
 
 ---
 
-## Community
+<p align="center">
+  Made with HATRED by Phemi
+</p>
 
-* Discord (coming soon)
-* Twitter (coming soon)
-* Email: [hello@sigmalang.dev](mailto:hello@sigmalang.dev)
-
----
-
-Made with HATRED by Phemi
-Sigma - Write less, run faster
-
-```
-```
+<p align="center">
+  <sub>Sigma - Write less, run faster</sub>
+</p>

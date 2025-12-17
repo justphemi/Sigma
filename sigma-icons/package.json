@@ -1,0 +1,25 @@
+{
+  "name": "sigma-icons",
+  "displayName": "sigma-icons",
+  "description": "File icons for Sigma programming language",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.107.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "contributes": {
+    "languages": [{
+      "id": "sigma",
+      "aliases": ["Sigma", "sigma"],
+      "extensions": [".sgm"],
+      "configuration": "./language-configuration.json"
+    }],
+    "grammars": [{
+      "language": "sigma",
+      "scopeName": "source.sigma",
+      "path": "./syntaxes/sigma.tmLanguage.json"
+    }]
+  }
+}

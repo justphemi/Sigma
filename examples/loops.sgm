@@ -1,0 +1,18 @@
+-- Loops and Conditionals in Sigma
+
+-- For loop
+$for (i: 0, i < 5, i++) :: {
+    yap(i)
+}
+
+-- While loop
+counter: 0
+$while counter < 3 :: {
+    yap(counter)
+    counter++
+}
+
+-- Conditionals
+age: 25
+$if age > 18 :: yap("Adult")
+$el :: yap("Minor")

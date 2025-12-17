@@ -1,0 +1,7 @@
+build/
+*.o
+*.out
+/tmp/
+.DS_Store
+*.vsix
+node_modules/

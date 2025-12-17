@@ -154,10 +154,32 @@ class CodeGen {
         }
         
         if (node->type == NODE_FUNC_DECL) {
-            emit("double " + node->value + "(");
-            for (size_t i = 0; i < node->children.size() - 1; i++) {
+            // Check if function has return statement to determine return type
+            bool hasReturn = false;
+            bool returnsString = false;
+            
+            // Scan function body for return statements
+            for (auto& stmt : node->children.back()->children) {
+                if (stmt->type == NODE_RETURN) {
+                    hasReturn = true;
+                    // Check if returning a string
+                    std::string retExpr = genExpr(stmt->children[0].get());
+                    if (isStringLiteral(retExpr) || retExpr.find("sigma_concat") != std::string::npos) {
+                        returnsString = true;
+                    }
+                }
+            }
+            
+            // Determine return type
+            std::string returnType = hasReturn ? (returnsString ? "char*" : "double") : "void";
+            
+            emit(returnType + " " + node->value + "(");
+            
+            // Handle parameters (could be zero)
+            size_t paramCount = node->children.size() - 1; // Last child is body
+            for (size_t i = 0; i < paramCount; i++) {
                 code << "double " << node->children[i]->value;
-                if (i < node->children.size() - 2) code << ", ";
+                if (i < paramCount - 1) code << ", ";
             }
             code << ") {\n";
             indent++;

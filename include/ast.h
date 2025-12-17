@@ -1,25 +1,36 @@
-#ifndef AST_H
-#define AST_H
-
+#pragma once
 #include <string>
 #include <vector>
 #include <memory>
 
-enum NodeType {
-    NODE_PROGRAM, NODE_VAR_DECL, NODE_FUNC_DECL, NODE_FUNC_CALL,
-    NODE_IF, NODE_FOR, NODE_WHILE, NODE_RETURN,
-    NODE_BINARY_OP, NODE_UNARY_OP, NODE_LITERAL, NODE_IDENT,
-    NODE_ARRAY, NODE_OBJECT, NODE_MEMBER_ACCESS, NODE_INDEX_ACCESS,
-    NODE_YAP, NODE_BLOCK
+enum ASTNodeType {
+    NODE_PROGRAM,
+    NODE_LITERAL,
+    NODE_IDENT,
+    NODE_BINARY_OP,
+    NODE_UNARY_OP,
+    NODE_VAR_DECL,
+    NODE_ASSIGNMENT,
+    NODE_FUNC_DECL,
+    NODE_FUNC_CALL,
+    NODE_RETURN,
+    NODE_IF,
+    NODE_FOR,
+    NODE_WHILE,
+    NODE_BLOCK,
+    NODE_YAP,
+    NODE_ARRAY,
+    NODE_OBJECT,
+    NODE_MEMBER_ACCESS,
+    NODE_INDEX_ACCESS,
+    NODE_TRY_CATCH,
+    NODE_INPUT
 };
 
 struct ASTNode {
-    NodeType type;
+    ASTNodeType type;
     std::string value;
     std::vector<std::unique_ptr<ASTNode>> children;
     
-    ASTNode(NodeType t) : type(t) {}
-    ASTNode(NodeType t, std::string v) : type(t), value(v) {}
+    ASTNode(ASTNodeType t, std::string v = "") : type(t), value(v) {}
 };
-
-#endif

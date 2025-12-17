@@ -22,11 +22,11 @@
 Sigma is a compiled programming language that combines Python's simplicity with C's performance. It compiles directly to optimized C code, making it extremely fast even on low-end devices.
 
 **Why Sigma?**
--  **Fast** - Compiles to optimized C, runs at native speed
--  **Simple** - Clean syntax, easy to learn
--  **Dynamic** - Python-like dynamic typing
--  **Minimal** - One binary, no dependencies
--  **Beautiful** - Unique syntax that makes code readable
+- 🚀 **Fast** - Compiles to optimized C, runs at native speed
+- ✨ **Simple** - Clean syntax, easy to learn
+- 🎯 **Dynamic** - Python-like dynamic typing
+- 📦 **Minimal** - One binary, no dependencies
+- 💎 **Beautiful** - Unique syntax that makes code readable
 
 ## Installation
 
@@ -95,6 +95,16 @@ name: "Christopher Jenkins"
 isAdult: true
 ```
 
+### Constants (Immutable)
+
+```sigma
+$fixed PI: 3.14159
+$fixed APP_NAME: "Sigma"
+$fixed MAX_USERS: 1000
+
+-- PI: 3.14  -- ERROR: Cannot reassign constant variable
+```
+
 ### Functions
 
 ```sigma
@@ -103,7 +113,7 @@ fn add_numbers: (a, b) {
 }
 
 result: add_numbers.run(5, 3)
-yap(result)  -- Prints: 8.00
+yap(result)  -- Prints: 8
 ```
 
 ### Conditionals
@@ -145,27 +155,53 @@ $while counter < 5 :: {
 ### Arrays
 
 ```sigma
+-- Create arrays
 numbers: [1, 2, 3, 4, 5]
-yap(numbers[0])  -- Prints: 1.00
+names: ["Alice", "Bob", "Charlie"]
 
--- Update values
+-- Access elements
+yap(numbers[0])  -- Prints: 1
+
+-- Update elements
 numbers[0]: 10
+yap(numbers[0])  -- Prints: 10
+
+-- Sort arrays
+sorted_asc: numbers.sort("asc")   -- Ascending
+sorted_desc: numbers.sort("desc")  -- Descending
+yap(sorted_asc)
 ```
 
 ### Objects
 
 ```sigma
+-- Create objects
 player: {
     name:: "Peters",
     age:: 24,
     score:: 1500
 }
 
+-- Access properties
 yap(player.name)   -- Prints: Peters
-yap(player.score)  -- Prints: 1500.00
+yap(player.score)  -- Prints: 1500
 
 -- Update properties
 player.score: 2000
+player.age: 25
+yap(player.score)  -- Prints: 2000
+```
+
+### Error Handling
+
+```sigma
+$try :: {
+    result: 100
+    yap("Operation successful")
+    yap(result)
+} catch(e) :: {
+    yap("An error occurred!")
+}
 ```
 
 ### Comments
@@ -184,13 +220,68 @@ block
 
 ```sigma
 yap("Hello")           -- Print to console
-$time_start()          -- Start timer (coming soon)
-$time_end()            -- End timer (coming soon)
 ```
 
 ---
 
 ## Examples
+
+### Array Manipulation
+
+```sigma
+-- Create and manipulate arrays
+numbers: [5, 2, 8, 1, 9, 3]
+yap(numbers)
+
+-- Sort ascending
+sorted: numbers.sort("asc")
+yap(sorted)  -- [1, 2, 3, 5, 8, 9]
+
+-- Sort descending
+reversed: numbers.sort("desc")
+yap(reversed)  -- [9, 8, 5, 3, 2, 1]
+
+-- Access and modify
+yap(numbers[0])
+numbers[0]: 100
+yap(numbers[0])
+```
+
+### Object Management
+
+```sigma
+-- Create a user profile
+user: {
+    username:: "john_doe",
+    email:: "john@example.com",
+    age:: 28,
+    verified:: true
+}
+
+-- Display user info
+yap(user.username)
+yap(user.email)
+
+-- Update user data
+user.age: 29
+user.verified: false
+yap(user.age)
+```
+
+### Constants Protection
+
+```sigma
+-- Define constants
+$fixed MAX_SPEED: 120
+$fixed APP_VERSION: "1.0.0"
+$fixed COLORS: ["red", "green", "blue"]
+
+yap(MAX_SPEED)
+yap(APP_VERSION)
+
+-- This would cause an error:
+-- MAX_SPEED: 150  -- ERROR: Cannot reassign constant
+```
 
 ### Fibonacci
 
@@ -219,21 +310,23 @@ $for (i: 1, i < 101, i++) :: {
 }
 ```
 
-### Calculator
+### Calculator with Error Handling
 
 ```sigma
-fn add: (a, b) { return a + b }
-fn subtract: (a, b) { return a - b }
-fn multiply: (a, b) { return a * b }
-fn divide: (a, b) { return a / b }
+fn divide: (a, b) {
+    $if b == 0 :: {
+        yap("Error: Division by zero")
+        return 0
+    }
+    return a / b
+}
 
-x: 10
-y: 5
-
-yap("Add: " + add.run(x, y))
-yap("Subtract: " + subtract.run(x, y))
-yap("Multiply: " + multiply.run(x, y))
-yap("Divide: " + divide.run(x, y))
+$try :: {
+    result: divide.run(10, 2)
+    yap("Result: " + result)
+} catch(e) :: {
+    yap("Calculation failed")
+}
 ```
 
 ---
@@ -241,25 +334,32 @@ yap("Divide: " + divide.run(x, y))
 ## Current Features
 
 ✅ Variables with dynamic typing  
+✅ **Constants with `$fixed` keyword**  
 ✅ Functions with parameters  
 ✅ Conditionals (`$if`, `$el`)  
 ✅ Loops (`$for`, `$while`)  
-✅ Arrays (basic)  
-✅ Objects (basic)  
+✅ **Arrays with indexing and updates**  
+✅ **Array sorting (`.sort("asc")`, `.sort("desc")`)**  
+✅ **Objects with property access**  
+✅ **Object property updates**  
+✅ **Try-catch error handling**  
 ✅ String concatenation  
 ✅ Arithmetic operations  
+✅ Comparison operators  
 ✅ Comments (single & multi-line)  
 ✅ Print function (`yap`)  
+✅ Recursion support  
 
 ## Roadmap
 
-🔜 Array methods (`.sort()`, `.push()`, `.pop()`)  
-🔜 String methods (`.length()`, `.upper()`, `.lower()`)  
+🔜 More array methods (`.push()`, `.pop()`, `.length()`, `.map()`, `.filter()`)  
+🔜 String methods (`.length()`, `.upper()`, `.lower()`, `.split()`)  
 🔜 File I/O operations  
 🔜 Timing functions (`$time_start`, `$time_end`)  
+🔜 Import/module system  
 🔜 Standard library  
 🔜 Package manager  
-🔜 Error handling (`try`/`catch`)  
+🔜 Better error messages with line numbers  
 
 ---
 
@@ -285,7 +385,9 @@ Sigma is **30x faster than Python** and **7x faster than Node.js** for computati
 All control flow keywords start with `$`:
 - `$if`, `$el` - Conditionals
 - `$for`, `$while` - Loops
-- `$time_start`, `$time_end` - Timing
+- `$fixed` - Constants
+- `$try` - Error handling
+- `$time_start`, `$time_end` - Timing (planned)
 - `$set_timeout`, `$set_interval` - Async (planned)
 
 **Built-in Functions:**
@@ -344,6 +446,8 @@ sigma/
 │   ├── codegen.cpp
 │   └── main.cpp
 ├── include/           # Header files
+│   ├── token.h
+│   └── ast.h
 ├── examples/          # Example programs
 ├── vscode-extension/  # VS Code extension for icons
 └── build.sh           # Build script
@@ -359,7 +463,7 @@ sigma/
 
 1. **Lexer** breaks code into tokens
 2. **Parser** builds Abstract Syntax Tree (AST)
-3. **Code Generator** converts AST to C code
+3. **Code Generator** converts AST to C code with runtime support
 4. **GCC** compiles C to native binary with `-O3`
 
 ---
@@ -370,13 +474,16 @@ sigma/
 A: To combine Python's simplicity with C's performance. Most languages force you to choose between ease-of-use and speed. Sigma gives you both.
 
 **Q: Is Sigma production-ready?**  
-A: Not yet. This is an early release (v0.1). Use for learning, prototyping, and experimentation.
+A: Not yet. This is an early release (v0.2). Use for learning, prototyping, and experimentation.
 
 **Q: Can I use Sigma for web development?**  
 A: Not currently. Focus is on systems programming and CLI tools. Web support planned for v2.0.
 
 **Q: How does Sigma compare to Go/Rust/Zig?**  
 A: Sigma is simpler. It's designed for people who find Go too verbose, Rust too complex, and just want to write fast code quickly.
+
+**Q: What makes Sigma different?**  
+A: Clean syntax with `$` prefixed keywords, `.run()` function calls, `::` for object properties, and compiles to optimized C for maximum performance.
 
 ---
 
@@ -395,7 +502,7 @@ MIT License - feel free to use Sigma in your projects!
 ---
 
 <p align="center">
-  Made with 💜 by developers who believe programming should be simple AND fast
+  Made with HATRED by Phemi
 </p>
 
 <p align="center">

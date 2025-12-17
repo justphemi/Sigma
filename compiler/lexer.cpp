@@ -14,7 +14,8 @@ class Lexer {
         {"false", TOK_FALSE}, {"yap", TOK_YAP},
         {"$if", TOK_IF}, {"$el", TOK_EL}, {"$for", TOK_FOR}, 
         {"$while", TOK_WHILE}, {"$time_start", TOK_TIME_START},
-        {"$time_end", TOK_TIME_END}
+        {"$time_end", TOK_TIME_END}, {"$fixed", TOK_FIXED},
+        {"$try", TOK_TRY}, {"catch", TOK_CATCH}, {"$in", TOK_IN}
     };
     
     char peek() { return pos < src.size() ? src[pos] : '\0'; }
@@ -130,6 +131,7 @@ public:
                 skipComment();
                 continue;
             }
+            else if (c == '=') { advance(); tokens.push_back({TOK_ASSIGN, "=", line, col}); }
             else if (c == '+') { advance(); tokens.push_back({TOK_PLUS, "+", line, col}); }
             else if (c == '-') { advance(); tokens.push_back({TOK_MINUS, "-", line, col}); }
             else if (c == '*') { advance(); tokens.push_back({TOK_STAR, "*", line, col}); }

@@ -72,6 +72,17 @@ class Parser {
                             }
                             expect(TOK_RPAREN);
                             return call;
+                        } else if (method == "sort" && check(TOK_LPAREN)) {
+                            // Array sort method
+                            auto access = std::make_unique<ASTNode>(NODE_MEMBER_ACCESS);
+                            access->children.push_back(std::move(node));
+                            access->children.push_back(std::make_unique<ASTNode>(NODE_IDENT, method));
+                            advance(); // (
+                            if (!check(TOK_RPAREN)) {
+                                access->children.push_back(parseExpression());
+                            }
+                            expect(TOK_RPAREN);
+                            return access;
                         } else {
                             auto access = std::make_unique<ASTNode>(NODE_MEMBER_ACCESS);
                             access->children.push_back(std::move(node));
@@ -131,7 +142,7 @@ class Parser {
     std::unique_ptr<ASTNode> parseComparison() {
         auto left = parseExpression();
         while (check(TOK_LT) || check(TOK_GT) || check(TOK_LTE) || 
-               check(TOK_GTE) || check(TOK_EQ) || check(TOK_NEQ)) {
+               check(TOK_GTE) || check(TOK_EQ) || check(TOK_STRICT_EQ) || check(TOK_NEQ)) {
             auto op = advance().value;
             auto right = parseExpression();
             auto node = std::make_unique<ASTNode>(NODE_BINARY_OP, op);
@@ -142,7 +153,36 @@ class Parser {
         return left;
     }
     
+    std::unique_ptr<ASTNode> parseLogical() {
+        auto left = parseComparison();
+        while (check(TOK_AND) || check(TOK_OR)) {
+            auto op = advance().value;
+            auto right = parseComparison();
+            auto node = std::make_unique<ASTNode>(NODE_BINARY_OP, op);
+            node->children.push_back(std::move(left));
+            node->children.push_back(std::move(right));
+            left = std::move(node);
+        }
+        return left;
+    }
+    
     std::unique_ptr<ASTNode> parseStatement() {
+        if (check(TOK_IN)) {
+            advance();
+            auto varName = expect(TOK_IDENT).value;
+            expect(TOK_COLON);
+            auto node = std::make_unique<ASTNode>(NODE_INPUT, varName);
+            
+            // Require prompt string
+            if (check(TOK_STRING)) {
+                node->children.push_back(std::make_unique<ASTNode>(NODE_LITERAL, "\"" + advance().value + "\""));
+            } else {
+                throw std::runtime_error("Expected prompt string after $in");
+            }
+            
+            return node;
+        }
+        
         if (check(TOK_YAP)) {
             advance();
             auto node = std::make_unique<ASTNode>(NODE_YAP);
@@ -159,10 +199,41 @@ class Parser {
             return node;
         }
         
+        if (check(TOK_TRY)) {
+            advance();
+            expect(TOK_DCOLON);
+            expect(TOK_LBRACE);
+            
+            auto node = std::make_unique<ASTNode>(NODE_TRY_CATCH);
+            auto tryBlock = std::make_unique<ASTNode>(NODE_BLOCK);
+            while (!check(TOK_RBRACE)) {
+                tryBlock->children.push_back(parseStatement());
+            }
+            expect(TOK_RBRACE);
+            node->children.push_back(std::move(tryBlock));
+            
+            if (check(TOK_CATCH)) {
+                advance();
+                expect(TOK_LPAREN);
+                auto errorVar = expect(TOK_IDENT).value;
+                expect(TOK_RPAREN);
+                expect(TOK_DCOLON);
+                expect(TOK_LBRACE);
+                
+                auto catchBlock = std::make_unique<ASTNode>(NODE_BLOCK, errorVar);
+                while (!check(TOK_RBRACE)) {
+                    catchBlock->children.push_back(parseStatement());
+                }
+                expect(TOK_RBRACE);
+                node->children.push_back(std::move(catchBlock));
+            }
+            return node;
+        }
+        
         if (check(TOK_IF)) {
             advance();
             auto node = std::make_unique<ASTNode>(NODE_IF);
-            node->children.push_back(parseComparison());
+            node->children.push_back(parseLogical());
             expect(TOK_DCOLON);
             if (check(TOK_LBRACE)) {
                 advance();
@@ -195,7 +266,7 @@ class Parser {
             expect(TOK_LPAREN);
             auto init = parseStatement();
             expect(TOK_COMMA);
-            auto cond = parseComparison();
+            auto cond = parseLogical();
             expect(TOK_COMMA);
             auto inc = parseStatement();
             expect(TOK_RPAREN);
@@ -221,7 +292,7 @@ class Parser {
         if (check(TOK_WHILE)) {
             advance();
             auto node = std::make_unique<ASTNode>(NODE_WHILE);
-            node->children.push_back(parseComparison());
+            node->children.push_back(parseLogical());
             expect(TOK_DCOLON);
             if (check(TOK_LBRACE)) {
                 advance();
@@ -254,14 +325,80 @@ class Parser {
             return node;
         }
         
+        if (check(TOK_FIXED)) {
+            advance();
+            auto name = expect(TOK_IDENT).value;
+            expect(TOK_COLON);
+            auto node = std::make_unique<ASTNode>(NODE_VAR_DECL, "$fixed_" + name);
+            node->children.push_back(parseExpression());
+            return node;
+        }
+        
         if (check(TOK_IDENT)) {
             auto name = advance().value;
+            
+            // Check for function call with .run() or .sort()
+            if (check(TOK_DOT)) {
+                size_t savedPos = pos;
+                advance();
+                if (check(TOK_IDENT)) {
+                    std::string method = advance().value;
+                    if ((method == "run" || method == "sort") && check(TOK_LPAREN)) {
+                        auto call = std::make_unique<ASTNode>(NODE_FUNC_CALL, name);
+                        advance();
+                        while (!check(TOK_RPAREN)) {
+                            call->children.push_back(parseExpression());
+                            if (check(TOK_COMMA)) advance();
+                        }
+                        expect(TOK_RPAREN);
+                        return call;
+                    }
+                }
+                pos = savedPos;
+            }
+            
+            // Check for assignment (property or array element)
+            if (check(TOK_DOT) || check(TOK_LBRACK)) {
+                auto lhs = std::make_unique<ASTNode>(NODE_IDENT, name);
+                
+                // Parse member/index access chain
+                while (check(TOK_DOT) || check(TOK_LBRACK)) {
+                    if (check(TOK_DOT)) {
+                        advance();
+                        auto member = expect(TOK_IDENT).value;
+                        auto access = std::make_unique<ASTNode>(NODE_MEMBER_ACCESS);
+                        access->children.push_back(std::move(lhs));
+                        access->children.push_back(std::make_unique<ASTNode>(NODE_IDENT, member));
+                        lhs = std::move(access);
+                    } else {
+                        advance(); // [
+                        auto idx = parseExpression();
+                        expect(TOK_RBRACK);
+                        auto access = std::make_unique<ASTNode>(NODE_INDEX_ACCESS);
+                        access->children.push_back(std::move(lhs));
+                        access->children.push_back(std::move(idx));
+                        lhs = std::move(access);
+                    }
+                }
+                
+                if (check(TOK_COLON)) {
+                    advance();
+                    auto node = std::make_unique<ASTNode>(NODE_ASSIGNMENT);
+                    node->children.push_back(std::move(lhs));
+                    node->children.push_back(parseExpression());
+                    return node;
+                }
+            }
+            
+            // Check for variable declaration
             if (check(TOK_COLON)) {
                 advance();
                 auto node = std::make_unique<ASTNode>(NODE_VAR_DECL, name);
                 node->children.push_back(parseExpression());
                 return node;
             }
+            
+            // Check for increment
             if (check(TOK_PLUSPLUS)) {
                 advance();
                 auto node = std::make_unique<ASTNode>(NODE_UNARY_OP, "++");

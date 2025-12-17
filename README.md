@@ -22,11 +22,11 @@
 Sigma is a compiled programming language that combines Python's simplicity with C's performance. It compiles directly to optimized C code, making it extremely fast even on low-end devices.
 
 **Why Sigma?**
-- 🚀 **Fast** - Compiles to optimized C, runs at native speed
-- ✨ **Simple** - Clean syntax, easy to learn
-- 🎯 **Dynamic** - Python-like dynamic typing
-- 📦 **Minimal** - One binary, no dependencies
-- 💎 **Beautiful** - Unique syntax that makes code readable
+-  **Fast** - Compiles to optimized C, runs at native speed
+-  **Simple** - Clean syntax, easy to learn
+-  **Dynamic** - Python-like dynamic typing
+-  **Minimal** - One binary, no dependencies
+-  **Beautiful** - Unique syntax that makes code readable
 
 ## Installation
 

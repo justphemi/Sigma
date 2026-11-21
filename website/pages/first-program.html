@@ -1,0 +1,132 @@
+<!--
+title: Your first program
+description: Write, run, debug and build your first Sigma program.
+-->
+<h1>Your first program</h1>
+<p class="lead">This page walks through writing a program, running it, fixing a mistake and turning it into an app you can share.</p>
+
+<h2>Hello, world</h2>
+<p>Make a new folder, and inside it create a file called <code>hello.sgm</code>. Sigma files end in <code>.sgm</code>.</p>
+<pre class="sigma" data-run data-file="hello.sgm">
+yap("Hello, world!")
+</pre>
+<pre class="output">
+Hello, world!
+</pre>
+<p>Run it from the terminal:</p>
+<pre class="shell">
+sig hello.sgm
+</pre>
+<p><code>yap</code> prints whatever you give it. There's no <code>main</code> function to write: Sigma runs the file from top to bottom.</p>
+
+<h2>Variables and input</h2>
+<p>Give a value a name with a colon. Read a line from the user with <code>ask</code>. Put any expression inside <code>{ }</code> in a string to drop its value in.</p>
+<pre class="sigma" data-run data-stdin="Ada\n1815\n">
+name: ask("What's your name? ")
+born: num(ask("What year were you born? "))
+age: 2026 - born
+yap("Nice to meet you, {name}. You turn {age} this year.")
+</pre>
+<pre class="output">
+What's your name? What year were you born? Nice to meet you, Ada. You turn 211 this year.
+</pre>
+<p>(The output looks squashed here because the input came from a file instead of a keyboard. In a real terminal, each answer appears after its question.)</p>
+<p><code>ask</code> always gives back text, so <code>num(...)</code> turns it into a number. If the text isn't a number, <code>num</code> returns <code>nil</code>, which you can check for.</p>
+
+<h2>Making decisions</h2>
+<pre class="sigma" data-run>
+temperature: 31
+
+fr temperature > 30 {
+    yap("it's hot, stay inside")
+} nah fr temperature > 15 {
+    yap("nice weather")
+} nah {
+    yap("grab a jacket")
+}
+</pre>
+<pre class="output">
+it's hot, stay inside
+</pre>
+<p><code>fr</code> means "if", <code>nah fr</code> is "else if" and <code>nah</code> is "else".</p>
+
+<h2>Repeating things</h2>
+<p>Every loop in Sigma starts with <code>grind</code>:</p>
+<pre class="sigma" data-run>
+grind i in 1..=3 {
+    yap("round {i}")
+}
+
+foods: ["jollof", "suya", "puff-puff"]
+grind food in foods {
+    yap("I like {food}")
+}
+</pre>
+<pre class="output">
+round 1
+round 2
+round 3
+I like jollof
+I like suya
+I like puff-puff
+</pre>
+
+<h2>Your own functions</h2>
+<p>Define functions with <code>cook</code> and give back a result with <code>serve</code>:</p>
+<pre class="sigma" data-run>
+cook area(width, height) {
+    serve width * height
+}
+
+yap(area(3, 4))
+</pre>
+<pre class="output">
+12
+</pre>
+
+<h2>When something is wrong</h2>
+<p>Sigma checks your whole program before running it. Here's a typo:</p>
+<pre class="sigma" data-error>
+total: 0
+grind i in 0..3 { totl += i }
+</pre>
+<pre class="output">
+error: 'totl' is not defined
+ --> main.sgm:2:19
+  |
+2 | grind i in 0..3 { totl += i }
+  |                   ^^^^
+  = hint: did you mean 'total'?
+</pre>
+<p>The message tells you the file, the line and the column, points at the problem and suggests a fix. Errors that can only happen while the program runs, like reading past the end of a list, print the line they happened on:</p>
+<pre class="sigma" data-run>
+scores: [90, 85]
+yap(scores[2])
+</pre>
+<pre class="output">
+error: index 2 is out of range (the list has 2 items)
+  --> main.sgm:2
+</pre>
+<p>You can catch these with <code>yolo</code> and <code>oops</code>. See <a href="errors.html">Errors</a>.</p>
+<p>To check a program for mistakes without running it, use <code>sig check</code>:</p>
+<pre class="shell">
+sig check hello.sgm
+</pre>
+
+<h2>Build an app you can share</h2>
+<p><code>sig build</code> makes a standalone executable. It doesn't need Sigma or a C compiler to run, so you can send it to anyone on the same kind of computer (for example, another Mac with the same type of chip).</p>
+<pre class="shell">
+sig build hello.sgm -o hello
+./hello
+</pre>
+<pre class="output">
+built hello
+Hello, world!
+</pre>
+
+<h2>Next steps</h2>
+<ul>
+  <li>Read the <a href="basics.html">language guide</a>, starting with values and variables.</li>
+  <li>Follow the <a href="tutorial-cli.html">tutorial</a> to build a complete command-line app.</li>
+  <li>Browse <code>examples/</code> in the repository for more programs.</li>
+</ul>

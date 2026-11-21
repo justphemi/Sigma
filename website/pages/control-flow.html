@@ -1,0 +1,174 @@
+<!--
+title: Control flow
+description: Conditions with fr and nah, loops with grind, and dip and skip.
+-->
+<h1>Control flow</h1>
+<p class="lead">Making decisions with <code>fr</code> and <code>nah</code>, and repeating work with <code>grind</code>.</p>
+
+<h2>fr, nah fr, nah</h2>
+<p><code>fr</code> runs a block when a condition is truthy. Add as many <code>nah fr</code> branches as you need and an optional final <code>nah</code>.</p>
+<pre class="sigma" data-run>
+score: 82
+
+fr score >= 90 {
+    yap("A")
+} nah fr score >= 80 {
+    yap("B")
+} nah fr score >= 70 {
+    yap("C")
+} nah {
+    yap("keep grinding")
+}
+</pre>
+<pre class="output">
+B
+</pre>
+<p>No parentheses are needed around the condition. The braces are required, but short blocks can sit on one line:</p>
+<pre class="sigma">
+age: 20
+fr age >= 18 { yap("welcome") } nah { yap("come back later") }
+</pre>
+<p><code>nah</code> can start on the line after the closing brace, if you prefer that style:</p>
+<pre class="sigma">
+ready: true
+fr ready {
+    yap("go")
+}
+nah {
+    yap("wait")
+}
+</pre>
+
+<h2>grind: one keyword for every loop</h2>
+
+<h3>Counting with a range</h3>
+<pre class="sigma" data-run>
+grind i in 0..3 { yap(i) }      -- 0, 1, 2 (stops before 3)
+grind i in 1..=3 { yap(i) }     -- 1, 2, 3 (includes 3)
+</pre>
+<pre class="output">
+0
+1
+2
+1
+2
+3
+</pre>
+<p>Ranges count up by one. If the end is smaller than the start, the loop doesn't run. To count down, loop over a range and subtract:</p>
+<pre class="sigma" data-run>
+grind i in 0..3 { yap(3 - i) }
+</pre>
+<pre class="output">
+3
+2
+1
+</pre>
+
+<h3>Looping over a list</h3>
+<pre class="sigma" data-run>
+squad: ["Ana", "Ben", "Cy"]
+grind name in squad { yap("hey {name}") }
+grind i, name in squad { yap("{i}: {name}") }
+</pre>
+<pre class="output">
+hey Ana
+hey Ben
+hey Cy
+0: Ana
+1: Ben
+2: Cy
+</pre>
+<p>With two names, the first is the position (starting at 0) and the second is the item.</p>
+
+<h3>Looping over a map or a string</h3>
+<pre class="sigma" data-run>
+prices: {rice: 2500, beans: 1800}
+grind item, price in prices { yap("{item} costs {price}") }
+grind item in prices { yap(item) }
+grind ch in "ok" { yap(ch) }
+</pre>
+<pre class="output">
+rice costs 2500
+beans costs 1800
+rice
+beans
+o
+k
+</pre>
+<p>Maps loop in the order their keys were added. With one name you get the keys; with two you get each key and its value.</p>
+
+<h3>While a condition holds</h3>
+<pre class="sigma" data-run>
+lives: 3
+grind lives > 0 {
+    yap("lives left: {lives}")
+    lives -= 1
+}
+</pre>
+<pre class="output">
+lives left: 3
+lives left: 2
+lives left: 1
+</pre>
+
+<h3>Forever</h3>
+<p><code>grind</code> with nothing after it loops until you <code>dip</code> out:</p>
+<pre class="sigma" data-run>
+n: 1
+grind {
+    n *= 2
+    fr n > 100 { dip }
+}
+yap(n)
+</pre>
+<pre class="output">
+128
+</pre>
+
+<h2>dip and skip</h2>
+<p><code>dip</code> leaves the loop immediately (break). <code>skip</code> jumps to the next round (continue). Both apply to the innermost loop.</p>
+<pre class="sigma" data-run>
+grind i in 1..=10 {
+    fr i % 2 == 0 { skip }
+    fr i > 7 { dip }
+    yap(i)
+}
+</pre>
+<pre class="output">
+1
+3
+5
+7
+</pre>
+<p>Using <code>dip</code> or <code>skip</code> outside a loop is a compile error.</p>
+
+<h2>Changing a list while you loop over it</h2>
+<p>A <code>grind ... in list</code> loop reads the list as it goes, so items you <code>push</code> during the loop get visited too, and a loop that keeps pushing never ends. To build a new list from an old one, push into a separate list (or use <code>filter</code> and <code>map</code>):</p>
+<pre class="sigma" data-run>
+nums: [1, 2, 3, 4, 5, 6]
+evens: []
+grind n in nums {
+    fr n % 2 == 0 { evens.push(n) }
+}
+yap(evens, nums.filter(n => n % 2 == 1))
+</pre>
+<pre class="output">
+[2, 4, 6] [1, 3, 5]
+</pre>
+
+<h2>Variables in blocks</h2>
+<p>Blocks don't create a new scope. A variable first assigned inside an <code>fr</code> or a loop still exists after it, which makes "find something" loops simple:</p>
+<pre class="sigma" data-run>
+found: nil
+grind name in ["Ana", "Ben", "Bisi"] {
+    fr name.starts("B") {
+        found: name
+        dip
+    }
+}
+yap(found)
+</pre>
+<pre class="output">
+Ben
+</pre>
+<p>The loop variable itself (like <code>name</code> above) belongs to the loop.</p>

@@ -1,0 +1,98 @@
+<!--
+title: Built-in functions
+description: Every built-in function in Sigma, with arguments, results and examples.
+-->
+<h1>Built-in functions</h1>
+<p class="lead">Functions that are always available, without any <code>yoink</code>.</p>
+
+<h2>Output and input</h2>
+<h3 id="yap">yap(values...)</h3>
+<p>Prints the values separated by spaces, then a new line. With no arguments, prints an empty line. Gives back <code>nil</code>.</p>
+<pre class="sigma" data-run>
+yap("a", 1, [2], {k: true})
+</pre>
+<pre class="output">
+a 1 [2] {k: true}
+</pre>
+
+<h3 id="ask">ask(prompt?)</h3>
+<p>Prints <code>prompt</code> if given, reads one line of input and gives it back as a string without the trailing new line. Gives <code>nil</code> at the end of input.</p>
+
+<h2>Types and conversion</h2>
+<h3 id="type">type(x)</h3>
+<p>The type's name as a string: <code>"num"</code>, <code>"str"</code>, <code>"bool"</code>, <code>"nil"</code>, <code>"list"</code>, <code>"map"</code> or <code>"fn"</code>.</p>
+<pre class="sigma" data-run>
+yap(type(1), type("a"), type(nil), type([]), type({}), type(x => x))
+</pre>
+<pre class="output">
+num str nil list map fn
+</pre>
+
+<h3 id="num">num(x)</h3>
+<p>Converts to a number. Text is parsed (spaces around it are allowed); <code>true</code> and <code>false</code> become 1 and 0. Gives <code>nil</code> if it can't be converted.</p>
+<h3 id="int">int(x)</h3>
+<p>Like <code>num</code>, then drops the fractional part (towards zero).</p>
+<h3 id="str">str(x)</h3>
+<p>Converts any value to text, the same way <code>yap</code> would print it.</p>
+<pre class="sigma" data-run>
+yap(num(" 2.5 "), num("2.5kg"), int("-7.9"), int(true), str([1, "a"]))
+</pre>
+<pre class="output">
+2.5 nil -7 1 [1, "a"]
+</pre>
+
+<h3 id="len">len(x)</h3>
+<p>Number of items in a list, entries in a map or bytes in a string. Other values are an error.</p>
+
+<h2>Math</h2>
+<table>
+  <tr><th>Function</th><th>Result</th></tr>
+  <tr><td><code>abs(x)</code></td><td>Absolute value</td></tr>
+  <tr><td><code>floor(x)</code></td><td>Round down</td></tr>
+  <tr><td><code>ceil(x)</code></td><td>Round up</td></tr>
+  <tr><td><code>round(x)</code></td><td>Round to the nearest whole number (halves round away from zero)</td></tr>
+  <tr><td><code>sqrt(x)</code></td><td>Square root</td></tr>
+  <tr><td><code>pow(a, b)</code></td><td><code>a</code> to the power <code>b</code>, same as <code>a ** b</code></td></tr>
+  <tr><td><code>min(a, b, ...)</code>, <code>min(list)</code></td><td>Smallest value (numbers or strings)</td></tr>
+  <tr><td><code>max(a, b, ...)</code>, <code>max(list)</code></td><td>Largest value</td></tr>
+</table>
+<pre class="sigma" data-run>
+yap(abs(-3), floor(2.7), ceil(2.1), round(2.5), round(-2.5), sqrt(144), pow(2, 8))
+yap(min(4, 2, 9), max([4, 2, 9]), min("pear", "apple"))
+</pre>
+<pre class="output">
+3 2 3 3 -3 12 256
+2 9 apple
+</pre>
+<p>To round to decimal places, scale first: <code>round(x * 100) / 100</code>.</p>
+
+<h2>Randomness</h2>
+<table>
+  <tr><th>Function</th><th>Result</th></tr>
+  <tr><td><code>rand()</code></td><td>Random number from 0 up to (not including) 1</td></tr>
+  <tr><td><code>rand_int(a, b)</code></td><td>Random whole number from <code>a</code> to <code>b</code>, including both</td></tr>
+</table>
+
+<h2>Time</h2>
+<table>
+  <tr><th>Function</th><th>Result</th></tr>
+  <tr><td><code>now()</code></td><td>Seconds from a fixed point, with high precision. Use differences between two calls to time things.</td></tr>
+  <tr><td><code>sleep(seconds)</code></td><td>Pause; fractions like <code>0.1</code> are fine</td></tr>
+</table>
+
+<h2>Program</h2>
+<table>
+  <tr><th>Function</th><th>Result</th></tr>
+  <tr><td><code>args()</code></td><td>List of command-line arguments (strings), not including the program name</td></tr>
+  <tr><td><code>exit(code?)</code></td><td>Stop now with exit status <code>code</code> (default 0)</td></tr>
+  <tr><td><code>vibecheck(cond, msg?)</code></td><td>Raise <code>"vibe check failed: msg"</code> if <code>cond</code> is falsy</td></tr>
+</table>
+
+<h2>Files</h2>
+<table>
+  <tr><th>Function</th><th>Result</th></tr>
+  <tr><td><code>read_file(path)</code></td><td>Whole file as a string. Error if it can't be read.</td></tr>
+  <tr><td><code>write_file(path, value)</code></td><td>Write <code>str(value)</code>, replacing the file</td></tr>
+  <tr><td><code>append_file(path, value)</code></td><td>Add <code>str(value)</code> to the end of the file</td></tr>
+  <tr><td><code>file_exists(path)</code></td><td><code>true</code> or <code>false</code></td></tr>
+</table>

@@ -1,0 +1,100 @@
+<!--
+title: Project layout
+description: How to organise a Sigma project with several files, tests and build scripts.
+-->
+<h1>Project layout</h1>
+<p class="lead">A simple, conventional structure for a Sigma project that grows beyond one file.</p>
+
+<h2>A typical project</h2>
+<pre class="output">
+my-app/
+  main.sgm            entry point: reads arguments, calls into lib/
+  lib/
+    parse.sgm         one file per area of the program
+    report.sgm
+  tests/
+    test_parse.sgm    tests use vibecheck
+    test_report.sgm
+    run.sh            runs every test
+  data/               sample input files
+  build/              executables from sig build (not committed)
+  Makefile            optional shortcuts
+  README.md
+  .gitignore
+</pre>
+<ul>
+  <li><strong>One entry point.</strong> <code>main.sgm</code> handles arguments and input, and calls functions from <code>lib/</code>. Keep it short.</li>
+  <li><strong>Library files define functions</strong> and maybe a few <code>lock</code> constants, but don't do work at the top level. That way any file can <code>yoink</code> them without side effects, including tests.</li>
+  <li><strong>Paths in <code>yoink</code> are relative to the file</strong>, so <code>main.sgm</code> writes <code>yoink "lib/parse.sgm"</code> and a test in <code>tests/</code> writes <code>yoink "../lib/parse.sgm"</code>.</li>
+</ul>
+
+<h2>The entry point</h2>
+<pre class="sigma" data-file="lib/report.sgm">
+-- lib/report.sgm
+cook summarize(nums) {
+    fr len(nums) == 0 { serve "no data" }
+    serve "count {len(nums)}, min {min(nums)}, max {max(nums)}, avg {round(nums.sum() / len(nums))}"
+}
+</pre>
+<pre class="sigma" data-run data-args="data.txt">
+-- main.sgm
+yoink "lib/report.sgm"
+
+cook main(argv) {
+    fr len(argv) != 1 {
+        yap("usage: my-app <file>")
+        serve 2
+    }
+    nums: []
+    grind line in read_file(argv[0]).split() {
+        n: num(line)
+        fr n != nil { nums.push(n) }
+    }
+    yap(summarize(nums))
+    serve 0
+}
+
+write_file("data.txt", "4\n8\n15\n16\n23\n42\n")  -- sample input for this example
+exit(main(args()))
+</pre>
+<pre class="output">
+count 6, min 4, max 42, avg 18
+</pre>
+<p>Wrapping the program in a <code>main</code> function keeps its variables local and gives you one place to decide the exit status.</p>
+
+<h2>.gitignore</h2>
+<pre class="output">
+build/
+*.txt.bak
+.DS_Store
+</pre>
+<p>Executables made with <code>sig build</code> are specific to one operating system and processor, so don't commit them. Build them in CI instead (see <a href="shipping.html">Shipping</a>).</p>
+
+<h2>A Makefile for shortcuts</h2>
+<p>Optional, but it saves typing:</p>
+<pre class="output">
+run:
+	sig main.sgm data/sample.txt
+
+check:
+	sig check main.sgm
+
+test:
+	sh tests/run.sh
+
+build:
+	mkdir -p build
+	sig build main.sgm -o build/my-app
+
+.PHONY: run check test build
+</pre>
+<p>(Makefile lines must start with a tab, not spaces.)</p>
+
+<h2>Style</h2>
+<ul>
+  <li><code>snake_case</code> for variables and functions, <code>UPPER_CASE</code> for <code>lock</code> constants.</li>
+  <li>Four spaces of indentation.</li>
+  <li>Small functions that take values in and <code>serve</code> results out are the easiest to test.</li>
+  <li>Use maps for records, and keep the same keys in every record of a kind.</li>
+  <li>Put a short comment at the top of each file saying what's in it.</li>
+</ul>

@@ -1,0 +1,188 @@
+<!--
+title: Values and variables
+description: Variables, numbers, booleans, nil, constants, operators and the rules for lines in Sigma.
+-->
+<h1>Values and variables</h1>
+<p class="lead">The building blocks: how to store values, which kinds of values exist and how to combine them.</p>
+
+<h2>Comments</h2>
+<p>Two dashes start a comment that runs to the end of the line. Three dashes on their own line start and end a block comment.</p>
+<pre class="sigma">
+-- this is a comment
+yap("hi")  -- so is this
+
+---
+This is a block comment.
+It can span as many lines as you like.
+---
+</pre>
+<div class="note"><strong>Heads up</strong><p>Because <code>--</code> starts a comment, Sigma has no <code>x--</code> operator. Write <code>x -= 1</code> instead. (<code>x++</code> works.)</p></div>
+
+<h2>Variables</h2>
+<p>Write a name, a colon and a value. The first assignment creates the variable; later ones change it.</p>
+<pre class="sigma" data-run>
+name: "Ada"
+age: 36
+age: age + 1
+yap(name, age)
+</pre>
+<pre class="output">
+Ada 37
+</pre>
+<p>Names can contain letters, digits and underscores, and can't start with a digit. The convention is <code>snake_case</code>.</p>
+<p>You don't declare types. A variable can hold any kind of value, and the compiler works out the types on its own to make your code fast.</p>
+
+<h3>Updating a variable</h3>
+<pre class="sigma" data-run>
+score: 10
+score += 5     -- 15
+score -= 3     -- 12
+score *= 2     -- 24
+score /= 4     -- 6
+score %= 4     -- 2
+score++        -- 3
+yap(score)
+</pre>
+<pre class="output">
+3
+</pre>
+<p>These need an existing variable, so a typo like <code>scroe += 1</code> is caught as an error instead of quietly creating a new variable.</p>
+
+<h3>Constants</h3>
+<p>Use <code>lock</code> for values that should never change. Trying to change one is a compile error.</p>
+<pre class="sigma" data-error>
+lock MAX_PLAYERS: 4
+MAX_PLAYERS: 5
+</pre>
+<pre class="output">
+error: 'MAX_PLAYERS' is locked, so it can't be changed
+ --> main.sgm:2:1
+  |
+2 | MAX_PLAYERS: 5
+  | ^^^^^^^^^^^
+  = hint: it was declared with  lock MAX_PLAYERS: ...
+</pre>
+
+<h2>Kinds of values</h2>
+<table>
+  <tr><th>Type</th><th>Examples</th><th><code>type(x)</code></th></tr>
+  <tr><td>Number</td><td><code>42</code>, <code>3.14</code>, <code>-7</code>, <code>1_000_000</code>, <code>0xFF</code>, <code>2.5e6</code></td><td><code>"num"</code></td></tr>
+  <tr><td>String</td><td><code>"hello"</code>, <code>'hello'</code>, <code>"hi {name}"</code></td><td><code>"str"</code></td></tr>
+  <tr><td>Boolean</td><td><code>true</code>, <code>false</code> (also <code>nocap</code>, <code>cap</code>)</td><td><code>"bool"</code></td></tr>
+  <tr><td>Nothing</td><td><code>nil</code></td><td><code>"nil"</code></td></tr>
+  <tr><td>List</td><td><code>[1, 2, 3]</code></td><td><code>"list"</code></td></tr>
+  <tr><td>Map</td><td><code>{name: "Ada", age: 36}</code></td><td><code>"map"</code></td></tr>
+  <tr><td>Function</td><td><code>x => x * 2</code></td><td><code>"fn"</code></td></tr>
+</table>
+
+<h3>Numbers</h3>
+<p>There's one number type: a 64-bit floating point number, the same as JavaScript's numbers or Python's floats. Whole numbers up to 9,007,199,254,740,992 are exact and print without a decimal point.</p>
+<pre class="sigma" data-run>
+yap(7 / 2, 2 ** 10, 0.1 + 0.2, 1_000_000, 0xFF)
+</pre>
+<pre class="output">
+3.5 1024 0.30000000000000004 1000000 255
+</pre>
+
+<h3>Booleans</h3>
+<p><code>true</code> and <code>false</code>. If you prefer, <code>nocap</code> means true and <code>cap</code> means false.</p>
+<pre class="sigma" data-run>
+online: nocap
+yap(online, not online)
+</pre>
+<pre class="output">
+true false
+</pre>
+
+<h3>nil</h3>
+<p><code>nil</code> means "no value". You get it from a missing map field, a function that doesn't <code>serve</code> anything, or <code>num()</code> on text that isn't a number.</p>
+<pre class="sigma" data-run>
+user: {name: "Ada"}
+yap(user.email)
+yap(num("abc") == nil)
+</pre>
+<pre class="output">
+nil
+true
+</pre>
+
+<h2>Operators</h2>
+<table>
+  <tr><th>Operator</th><th>Meaning</th><th>Example</th></tr>
+  <tr><td><code>+ - * /</code></td><td>Arithmetic</td><td><code>7 / 2</code> is <code>3.5</code></td></tr>
+  <tr><td><code>%</code></td><td>Remainder (takes the sign of the right side)</td><td><code>-7 % 3</code> is <code>2</code></td></tr>
+  <tr><td><code>**</code></td><td>Power</td><td><code>2 ** 3</code> is <code>8</code></td></tr>
+  <tr><td><code>== !=</code></td><td>Equal, not equal (lists and maps compare by contents)</td><td><code>[1, 2] == [1, 2]</code> is <code>true</code></td></tr>
+  <tr><td><code>&lt; &gt; &lt;= &gt;=</code></td><td>Compare numbers, or strings alphabetically</td><td><code>"apple" &lt; "banana"</code></td></tr>
+  <tr><td><code>and or not</code></td><td>Logic (also <code>&amp;&amp; || !</code>)</td><td><code>age &gt;= 18 and not banned</code></td></tr>
+  <tr><td><code>+</code> on strings</td><td>Join text (other values are converted)</td><td><code>"n=" + 5</code> is <code>"n=5"</code></td></tr>
+  <tr><td><code>+</code> on lists</td><td>New list with both</td><td><code>[1] + [2]</code> is <code>[1, 2]</code></td></tr>
+  <tr><td><code>a..b</code>, <code>a..=b</code></td><td>Range (end excluded, end included)</td><td><code>0..3</code> is <code>[0, 1, 2]</code></td></tr>
+</table>
+<p>Dividing by zero, or taking a remainder by zero, is an error rather than silently producing infinity.</p>
+<p><code>and</code> and <code>or</code> always give back <code>true</code> or <code>false</code>, and they stop early: in <code>a or b</code>, <code>b</code> isn't evaluated when <code>a</code> is truthy.</p>
+<p>Because they give back booleans, <code>name or "guest"</code> is <code>true</code>, not the name. To pick between two values, use <code>fr</code>:</p>
+<pre class="sigma" data-run>
+name: nil
+shown: "guest"
+fr name != nil { shown: name }
+yap(shown)
+</pre>
+<pre class="output">
+guest
+</pre>
+
+<h3>Order of operations</h3>
+<p>From tightest to loosest:</p>
+<ol>
+  <li>Calls, indexing and fields: <code>f(x)</code>, <code>list[0]</code>, <code>user.name</code></li>
+  <li><code>**</code> (groups right to left, so <code>2 ** 3 ** 2</code> is <code>2 ** 9</code>)</li>
+  <li>Unary minus: <code>-x</code> (so <code>-2 ** 2</code> is <code>-4</code>)</li>
+  <li><code>* / %</code></li>
+  <li><code>+ -</code></li>
+  <li><code>..</code> and <code>..=</code></li>
+  <li><code>== != &lt; &gt; &lt;= &gt;=</code></li>
+  <li><code>not</code></li>
+  <li><code>and</code></li>
+  <li><code>or</code></li>
+</ol>
+<p>Comparisons can't be chained. Write <code>0 &lt; x and x &lt; 10</code> rather than <code>0 &lt; x &lt; 10</code>; the compiler tells you if you forget.</p>
+
+<h2>Truthiness</h2>
+<p>Conditions don't have to be booleans. These values count as false; everything else counts as true:</p>
+<ul>
+  <li><code>false</code> and <code>nil</code></li>
+  <li><code>0</code></li>
+  <li>the empty string <code>""</code>, the empty list <code>[]</code> and the empty map <code>{}</code></li>
+</ul>
+<pre class="sigma" data-run>
+todo: []
+fr not todo { yap("nothing to do") }
+</pre>
+<pre class="output">
+nothing to do
+</pre>
+
+<h2>Lines and statements</h2>
+<p>Each statement goes on its own line. To put several on one line, separate them with <code>;</code>.</p>
+<pre class="sigma">
+x: 1; y: 2; yap(x + y)
+</pre>
+<p>Inside <code>( )</code>, <code>[ ]</code> and map braces you can break lines anywhere, which is handy for long lists and calls:</p>
+<pre class="sigma">
+colors: [
+    "red",
+    "green",
+    "blue",
+]
+</pre>
+<p>Outside brackets, keep a binary operator on the same line as the value before it. Method chains can continue on the next line with a leading dot:</p>
+<pre class="sigma">
+names: ["Kai", "zara", "Milo"]
+total_length: len(names[0]) +
+    len(names[1])
+shout: names
+    .map(n => n.upper())
+    .join(", ")
+</pre>
+<p>A line that computes something but doesn't use it, like <code>x + 1</code> on its own, is an error, because it's almost always a mistake. Only function calls can stand alone.</p>

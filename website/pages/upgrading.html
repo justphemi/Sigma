@@ -1,0 +1,75 @@
+<!--
+title: Upgrading from 0.1
+description: How to move Sigma 0.1 code to the Sigma 0.2 syntax.
+-->
+<h1>Upgrading from 0.1</h1>
+<p class="lead">Sigma 0.2 replaced the <code>$</code> keywords and <code>::</code> with a shorter syntax. The compiler recognises the old forms and tells you what to write instead, so upgrading is mostly following the error messages.</p>
+
+<h2>What changed</h2>
+<table>
+  <tr><th>Sigma 0.1</th><th>Sigma 0.2</th></tr>
+  <tr><td><code>$if x &gt; 1 :: { ... }</code></td><td><code>fr x &gt; 1 { ... }</code></td></tr>
+  <tr><td><code>$el :: { ... }</code></td><td><code>nah { ... }</code></td></tr>
+  <tr><td><code>$for (i: 0, i &lt; 10, i++) :: { ... }</code></td><td><code>grind i in 0..10 { ... }</code></td></tr>
+  <tr><td><code>$while x &lt; 5 :: { ... }</code></td><td><code>grind x &lt; 5 { ... }</code></td></tr>
+  <tr><td><code>fn add: (a, b) { return a + b }</code></td><td><code>cook add(a, b) { serve a + b }</code></td></tr>
+  <tr><td><code>add.run(1, 2)</code></td><td><code>add(1, 2)</code></td></tr>
+  <tr><td><code>$fixed PI: 3.14</code></td><td><code>lock PI: 3.14</code></td></tr>
+  <tr><td><code>$try :: { } catch(e) :: { }</code></td><td><code>yolo { } oops e { }</code></td></tr>
+  <tr><td><code>$in name: "prompt"</code></td><td><code>name: ask("prompt")</code></td></tr>
+  <tr><td><code>{ name:: "x" }</code></td><td><code>{name: "x"}</code></td></tr>
+  <tr><td><code>check_type(x)</code></td><td><code>type(x)</code></td></tr>
+  <tr><td><code>to_int</code>, <code>to_dec</code>, <code>to_str</code></td><td><code>int</code>, <code>num</code>, <code>str</code></td></tr>
+  <tr><td><code>random(digits)</code>, <code>random_range(a, b)</code></td><td><code>rand_int(a, b)</code></td></tr>
+  <tr><td><code>x = 5</code></td><td><code>x: 5</code></td></tr>
+  <tr><td><code>a === b</code></td><td><code>a == b</code></td></tr>
+</table>
+
+<h2>The compiler helps</h2>
+<pre class="sigma" data-error>
+fn greet: (name) {
+    yap("hi " + name)
+}
+</pre>
+<pre class="output">
+error: 'fn' is old Sigma syntax
+ --> main.sgm:1:1
+  |
+1 | fn greet: (name) {
+  | ^^
+  = hint: cook a function like this:  cook add(a, b) { serve a + b }
+</pre>
+<pre class="sigma" data-error>
+cook greet(name) { yap("hi " + name) }
+greet.run("Ada")
+</pre>
+<pre class="output">
+error: '.run()' is old Sigma syntax
+ --> main.sgm:2:7
+  |
+2 | greet.run("Ada")
+  |       ^^^
+  = hint: call functions directly:  greet(...)
+</pre>
+
+<h2>Bugs fixed in 0.2</h2>
+<ul>
+  <li>Reassigning a variable inside a loop (<code>total: total + i</code>) used to create a new variable, so totals stayed at 0.</li>
+  <li><code>%</code> didn't parse.</li>
+  <li><code>$fixed</code> constants failed to compile.</li>
+  <li>try and catch never caught anything.</li>
+  <li><code>sig --version</code> didn't work.</li>
+</ul>
+
+<h2>New in 0.2</h2>
+<ul>
+  <li>Type inference, making number-heavy code as fast as C</li>
+  <li>String interpolation, single-quoted strings and escapes</li>
+  <li>Lambdas and closures</li>
+  <li>Maps with string keys, plus around 30 methods on lists, strings and maps</li>
+  <li><code>yoink</code> for multi-file programs</li>
+  <li>Files, arguments, time and random numbers</li>
+  <li>Catchable runtime errors with line numbers</li>
+  <li>Compile errors with hints and "did you mean" suggestions</li>
+  <li><code>sig build</code>, <code>sig check</code>, <code>sig emit</code>, the compile cache and <code>#!</code> scripts</li>
+</ul>

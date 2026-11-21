@@ -1,0 +1,116 @@
+<!--
+title: Input and output
+description: Printing, reading input, command-line arguments, files, time and randomness.
+-->
+<h1>Input and output</h1>
+<p class="lead">Talking to the outside world: the terminal, command-line arguments, files, the clock and random numbers.</p>
+
+<h2>Printing</h2>
+<p><code>yap</code> prints its arguments separated by spaces, followed by a new line.</p>
+<pre class="sigma" data-run>
+yap("total:", 42, [1, 2], true)
+yap()
+yap("done")
+</pre>
+<pre class="output">
+total: 42 [1, 2] true
+
+done
+</pre>
+<p>To print without spaces between values, build one string with interpolation: <code>yap("{a}{b}")</code>.</p>
+<p>When output goes to a file or another program (like <code>sig app.sgm &gt; out.txt</code>), Sigma buffers it, which makes printing many lines very fast.</p>
+
+<h2>Reading input</h2>
+<p><code>ask(prompt)</code> prints the prompt, waits for the user to type a line and gives it back as a string, without the new line. At the end of input (the user pressed Ctrl+D, or a piped file ran out) it gives <code>nil</code>.</p>
+<pre class="sigma" data-run data-stdin="first\nsecond\n">
+-- read every line until the input ends
+count: 0
+grind {
+    line: ask()
+    fr line == nil { dip }
+    count++
+    yap("{count}: {line}")
+}
+</pre>
+<pre class="output">
+1: first
+2: second
+</pre>
+<p>That loop also works with piped input, so Sigma programs fit into shell pipelines:</p>
+<pre class="shell">
+cat names.txt | sig number_lines.sgm
+</pre>
+
+<h2>Command-line arguments</h2>
+<p><code>args()</code> gives a list of the words typed after the program name:</p>
+<pre class="sigma" data-run data-args="report.txt --verbose">
+a: args()
+yap(len(a), a)
+fr a.has("--verbose") { yap("verbose mode on") }
+</pre>
+<pre class="output">
+2 ["report.txt", "--verbose"]
+verbose mode on
+</pre>
+<pre class="shell">
+sig tool.sgm report.txt --verbose
+</pre>
+
+<h2>Files</h2>
+<table>
+  <tr><th>Function</th><th>Does</th></tr>
+  <tr><td><code>read_file(path)</code></td><td>The whole file as a string</td></tr>
+  <tr><td><code>write_file(path, text)</code></td><td>Create or replace the file</td></tr>
+  <tr><td><code>append_file(path, text)</code></td><td>Add to the end, creating the file if needed</td></tr>
+  <tr><td><code>file_exists(path)</code></td><td><code>true</code> or <code>false</code></td></tr>
+</table>
+<pre class="sigma" data-run>
+write_file("notes.txt", "buy milk\n")
+append_file("notes.txt", "call mum\n")
+fr file_exists("notes.txt") {
+    grind i, line in read_file("notes.txt").trim().split("\n") {
+        yap("{i + 1}. {line}")
+    }
+}
+</pre>
+<pre class="output">
+1. buy milk
+2. call mum
+</pre>
+<p>Paths are relative to the folder you run the program from. A file that can't be read or written raises an error you can catch with <code>yolo</code>.</p>
+
+<h3>Line-based data</h3>
+<p>Simple text formats are easy to read and write: one record per line, fields separated by a character.</p>
+<pre class="sigma" data-run>
+write_file("people.csv", "name,age\nAda,36\nTolu,28\n")
+
+people: []
+grind line in read_file("people.csv").trim().split("\n").slice(1) {
+    f: line.split(",")
+    people.push({name: f[0], age: num(f[1])})
+}
+yap(people)
+</pre>
+<pre class="output">
+[{name: "Ada", age: 36}, {name: "Tolu", age: 28}]
+</pre>
+
+<h2>Time</h2>
+<p><code>now()</code> gives a time in seconds with sub-microsecond precision. It's meant for measuring how long something takes (it's not the date). <code>sleep(seconds)</code> pauses.</p>
+<pre class="sigma">
+start: now()
+sleep(0.25)
+yap("took {round((now() - start) * 1000)} ms")
+</pre>
+
+<h2>Random numbers</h2>
+<pre class="sigma">
+yap(rand())            -- a number from 0 up to (not including) 1
+yap(rand_int(1, 6))    -- a whole number from 1 to 6, like a die
+colors: ["red", "green", "blue"]
+yap(colors[rand_int(0, len(colors) - 1)])
+</pre>
+<p>Randomness is seeded differently on every run. It's fine for games and simulations, but not for passwords or anything security related.</p>
+
+<h2>Ending the program</h2>
+<p><code>exit()</code> stops immediately with status 0, and <code>exit(code)</code> with the status you choose. Output printed so far is always flushed first.</p>

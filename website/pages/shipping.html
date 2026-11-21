@@ -1,0 +1,83 @@
+<!--
+title: Shipping
+description: Building standalone executables from Sigma programs and distributing them.
+-->
+<h1>Shipping</h1>
+<p class="lead">Turn a Sigma program into a single executable file that runs without Sigma installed.</p>
+
+<h2>sig build</h2>
+<pre class="shell">
+sig build main.sgm -o my-app
+./my-app
+</pre>
+<p>Without <code>-o</code>, the executable is named after the file (<code>main.sgm</code> becomes <code>main</code>). It contains your code, every yoinked file and the Sigma runtime, compiled with optimizations. It doesn't read the <code>.sgm</code> files at run time, so you only ship the one file.</p>
+
+<h3>Where it runs</h3>
+<p>An executable runs on the same kind of system it was built on:</p>
+<ul>
+  <li>Built on a Mac with Apple silicon: runs on Macs with Apple silicon.</li>
+  <li>Built on an Intel Mac: runs on Intel Macs (and on Apple silicon through Rosetta).</li>
+  <li>Built on Linux: runs on Linux with the same processor type and a similar or newer system library (glibc). Building on an older distribution, such as the oldest Ubuntu you support, gives the widest reach.</li>
+</ul>
+<p>To support several systems, build on each one. CI makes that easy (below).</p>
+
+<h2>Installing for yourself</h2>
+<pre class="shell">
+sig build main.sgm -o my-app
+sudo mv my-app /usr/local/bin/
+</pre>
+<p>Or into a folder you own, like <code>~/.local/bin</code>, if it's on your PATH.</p>
+
+<h2>Releasing on GitHub</h2>
+<p>This workflow builds executables for Linux and macOS whenever you push a version tag like <code>v1.0.0</code>, and attaches them to a GitHub release. Save it as <code>.github/workflows/release.yml</code>:</p>
+<pre class="output">
+name: release
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-22.04
+            name: linux-x64
+          - os: macos-14
+            name: macos-arm64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Sigma
+        run: |
+          git clone --depth 1 https://github.com/justphemi/Sigma.git /tmp/sigma
+          cd /tmp/sigma && ./build.sh
+      - name: Build
+        run: /tmp/sigma/build/sig build main.sgm -o my-app-${{ matrix.name }}
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: my-app-${{ matrix.name }}
+</pre>
+<pre class="shell">
+git tag v1.0.0
+git push origin v1.0.0
+</pre>
+
+<h2>Looking at the generated C</h2>
+<p><code>sig emit</code> prints the C code Sigma generates. It's useful for curiosity, for checking what the compiler did with a hot loop, or for building on a system where you have a C compiler but not Sigma:</p>
+<pre class="shell">
+sig emit main.sgm > main.c
+cc -O2 main.c -o my-app -lm
+</pre>
+<p>The C file is self-contained: the runtime is included in it.</p>
+
+<h2>Before you ship</h2>
+<ul>
+  <li>Run <code>sig check</code> and your tests.</li>
+  <li>Make error cases exit with a non-zero status (<code>exit(1)</code>), so scripts that call your tool can tell when it failed.</li>
+  <li>Print usage help when the arguments are wrong.</li>
+  <li>Remember there's no garbage collector yet: a tool that processes input and exits is perfect; a program meant to run for days is not (see <a href="faq.html">limitations</a>).</li>
+</ul>

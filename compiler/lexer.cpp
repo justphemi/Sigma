@@ -51,6 +51,9 @@ public:
     Lexer(int file, const std::string& src, int line, int col) : file_(file), s_(src), line_(line), col_(col) {}
 
     std::vector<Token> run() {
+        // A "#!" first line lets a .sgm file run directly as a script.
+        if (line_ == 1 && col_ == 1 && s_.compare(0, 2, "#!") == 0)
+            while (i_ < s_.size() && peek() != '\n') get();
         for (;;) {
             skipSpace();
             if (i_ >= s_.size()) break;

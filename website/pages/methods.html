@@ -1,0 +1,75 @@
+<!--
+title: Methods
+description: Every method on lists, strings and maps in Sigma.
+-->
+<h1>Methods</h1>
+<p class="lead">Called with a dot: <code>list.push(x)</code>, <code>text.upper()</code>, <code>map.keys()</code>. Methods marked "in place" change the value; the others give back a new value.</p>
+
+<h2>List methods</h2>
+<table>
+  <tr><th>Method</th><th>Result</th></tr>
+  <tr><td><code>push(x)</code></td><td>Add <code>x</code> to the end. In place.</td></tr>
+  <tr><td><code>pop()</code></td><td>Remove and give back the last item. Error if empty. In place.</td></tr>
+  <tr><td><code>insert(i, x)</code></td><td>Put <code>x</code> at position <code>i</code> (0 to <code>len</code>). In place.</td></tr>
+  <tr><td><code>del(i)</code></td><td>Remove and give back the item at <code>i</code>. In place.</td></tr>
+  <tr><td><code>clear()</code></td><td>Remove everything. In place.</td></tr>
+  <tr><td><code>has(x)</code></td><td><code>true</code> if some item <code>== x</code></td></tr>
+  <tr><td><code>find(x)</code></td><td>Position of the first item <code>== x</code>, or <code>-1</code></td></tr>
+  <tr><td><code>get(i, default?)</code></td><td>Item at <code>i</code>, or <code>default</code> (or <code>nil</code>) if out of range</td></tr>
+  <tr><td><code>slice(a, b?)</code></td><td>Items from <code>a</code> up to (not including) <code>b</code>; negative positions count from the end</td></tr>
+  <tr><td><code>map(f)</code></td><td>New list of <code>f(item)</code> (or <code>f(item, i)</code>)</td></tr>
+  <tr><td><code>filter(f)</code></td><td>New list of items where <code>f(item)</code> is truthy</td></tr>
+  <tr><td><code>each(f)</code></td><td>Call <code>f(item)</code> for every item</td></tr>
+  <tr><td><code>reduce(f, start)</code></td><td>Fold: <code>f(f(start, item0), item1)</code> and so on</td></tr>
+  <tr><td><code>sort()</code></td><td>Sorted copy, smallest first</td></tr>
+  <tr><td><code>sort("desc")</code></td><td>Sorted copy, largest first</td></tr>
+  <tr><td><code>sort(key)</code>, <code>sort(key, "desc")</code></td><td>Sorted copy, ordered by <code>key(item)</code>. Stable.</td></tr>
+  <tr><td><code>reverse()</code></td><td>Reversed copy</td></tr>
+  <tr><td><code>join(sep?)</code></td><td>Items as text with <code>sep</code> between (nothing between if left out)</td></tr>
+  <tr><td><code>sum()</code></td><td>Total of the numbers (0 for an empty list)</td></tr>
+  <tr><td><code>copy()</code></td><td>Shallow copy</td></tr>
+</table>
+<pre class="sigma" data-run>
+xs: [3, 1, 2]
+yap(xs.sort(), xs.reverse(), xs.slice(-2), xs.join("-"), xs.reduce((a, x) => a * x, 1))
+</pre>
+<pre class="output">
+[1, 2, 3] [2, 1, 3] [1, 2] 3-1-2 6
+</pre>
+
+<h2>String methods</h2>
+<table>
+  <tr><th>Method</th><th>Result</th></tr>
+  <tr><td><code>upper()</code>, <code>lower()</code></td><td>Changed case (letters A to Z)</td></tr>
+  <tr><td><code>trim()</code></td><td>Without whitespace at both ends</td></tr>
+  <tr><td><code>split()</code></td><td>List of words, split on any whitespace</td></tr>
+  <tr><td><code>split(sep)</code></td><td>List of pieces between each <code>sep</code>; <code>""</code> splits into single bytes</td></tr>
+  <tr><td><code>replace(old, new)</code></td><td>Every <code>old</code> replaced with <code>new</code></td></tr>
+  <tr><td><code>has(part)</code></td><td><code>true</code> if <code>part</code> appears</td></tr>
+  <tr><td><code>find(part)</code></td><td>Position of the first <code>part</code>, or <code>-1</code></td></tr>
+  <tr><td><code>starts(p)</code>, <code>ends(p)</code></td><td>Starts or ends with <code>p</code></td></tr>
+  <tr><td><code>slice(a, b?)</code></td><td>Part from <code>a</code> up to (not including) <code>b</code></td></tr>
+  <tr><td><code>repeat(n)</code></td><td>Repeated <code>n</code> times</td></tr>
+  <tr><td><code>reverse()</code></td><td>Reversed</td></tr>
+  <tr><td><code>chars()</code></td><td>List of single characters</td></tr>
+</table>
+<pre class="sigma" data-run>
+s: "  Hello, World  "
+yap(s.trim().lower(), s.trim().split(", "), s.has("World"), s.trim().find("o"))
+</pre>
+<pre class="output">
+hello, world ["Hello", "World"] true 4
+</pre>
+
+<h2>Map methods</h2>
+<table>
+  <tr><th>Method</th><th>Result</th></tr>
+  <tr><td><code>keys()</code></td><td>List of keys, in insertion order</td></tr>
+  <tr><td><code>values()</code></td><td>List of values, in the same order</td></tr>
+  <tr><td><code>has(key)</code></td><td><code>true</code> if the key exists</td></tr>
+  <tr><td><code>get(key, default?)</code></td><td>The value, or <code>default</code> (or <code>nil</code>) if missing</td></tr>
+  <tr><td><code>del(key)</code></td><td>Remove the key; gives <code>true</code> if it was there. In place.</td></tr>
+  <tr><td><code>clear()</code></td><td>Remove everything. In place.</td></tr>
+  <tr><td><code>copy()</code></td><td>Shallow copy</td></tr>
+</table>
+<p>Calling any other method name on a map calls the function stored under that key. See <a href="maps.html#maps-as-objects">maps as objects</a>.</p>

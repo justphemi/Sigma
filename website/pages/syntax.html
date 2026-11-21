@@ -1,0 +1,99 @@
+<!--
+title: Syntax reference
+description: Every Sigma keyword, operator, literal and statement form on one page.
+-->
+<h1>Syntax reference</h1>
+<p class="lead">The whole language on one page.</p>
+
+<h2>Keywords</h2>
+<table>
+  <tr><th>Keyword</th><th>Meaning</th><th>Example</th></tr>
+  <tr><td><code>fr</code></td><td>if</td><td><code>fr x &gt; 0 { ... }</code></td></tr>
+  <tr><td><code>nah fr</code></td><td>else if</td><td><code>} nah fr x &lt; 0 { ... }</code></td></tr>
+  <tr><td><code>nah</code></td><td>else</td><td><code>} nah { ... }</code></td></tr>
+  <tr><td><code>grind</code></td><td>loop</td><td><code>grind i in 0..10 { ... }</code></td></tr>
+  <tr><td><code>in</code></td><td>what to loop over</td><td><code>grind x in list { ... }</code></td></tr>
+  <tr><td><code>dip</code></td><td>break out of the loop</td><td><code>fr done { dip }</code></td></tr>
+  <tr><td><code>skip</code></td><td>continue with the next round</td><td><code>fr x == 0 { skip }</code></td></tr>
+  <tr><td><code>cook</code></td><td>define a function</td><td><code>cook add(a, b) { ... }</code></td></tr>
+  <tr><td><code>serve</code></td><td>return</td><td><code>serve a + b</code></td></tr>
+  <tr><td><code>lock</code></td><td>constant</td><td><code>lock MAX: 10</code></td></tr>
+  <tr><td><code>yolo</code></td><td>try</td><td><code>yolo { ... }</code></td></tr>
+  <tr><td><code>oops</code></td><td>catch</td><td><code>} oops e { ... }</code></td></tr>
+  <tr><td><code>yeet</code></td><td>throw</td><td><code>yeet "bad input"</code></td></tr>
+  <tr><td><code>yoink</code></td><td>include another file</td><td><code>yoink "lib/util.sgm"</code></td></tr>
+  <tr><td><code>and</code>, <code>or</code>, <code>not</code></td><td>logic</td><td><code>a and not b</code></td></tr>
+  <tr><td><code>true</code>, <code>false</code></td><td>booleans</td><td><code>ready: true</code></td></tr>
+  <tr><td><code>nocap</code>, <code>cap</code></td><td>other names for true and false</td><td><code>legit: nocap</code></td></tr>
+  <tr><td><code>nil</code></td><td>no value</td><td><code>fr x == nil { ... }</code></td></tr>
+</table>
+<p>Keywords can't be used as variable or function names.</p>
+
+<h2>Statements</h2>
+<table>
+  <tr><th>Form</th><th>Notes</th></tr>
+  <tr><td><code>name: expr</code></td><td>Create or change a variable</td></tr>
+  <tr><td><code>lock NAME: expr</code></td><td>Constant</td></tr>
+  <tr><td><code>x.field: expr</code>, <code>x[key]: expr</code></td><td>Set a map field or list item</td></tr>
+  <tr><td><code>x += expr</code> (also <code>-= *= /= %=</code>)</td><td>Works on variables, fields and items; the target must exist</td></tr>
+  <tr><td><code>x++</code></td><td>Add one</td></tr>
+  <tr><td><code>f(args)</code>, <code>x.method(args)</code></td><td>Calls are the only expressions that can stand alone</td></tr>
+  <tr><td><code>fr cond { } nah fr cond { } nah { }</code></td><td>Braces are required</td></tr>
+  <tr><td><code>grind { }</code></td><td>Forever</td></tr>
+  <tr><td><code>grind cond { }</code></td><td>While</td></tr>
+  <tr><td><code>grind x in expr { }</code></td><td>Over a list, string, map (keys) or range</td></tr>
+  <tr><td><code>grind i, x in expr { }</code></td><td>With position (or key and value for maps)</td></tr>
+  <tr><td><code>dip</code>, <code>skip</code></td><td>Only inside a loop</td></tr>
+  <tr><td><code>cook name(a, b) { }</code></td><td>Top level only</td></tr>
+  <tr><td><code>serve</code>, <code>serve expr</code></td><td>Only inside a function or lambda</td></tr>
+  <tr><td><code>yolo { } oops e { }</code></td><td><code>oops</code> is optional</td></tr>
+  <tr><td><code>yeet expr</code></td><td>Any value</td></tr>
+  <tr><td><code>yoink "path.sgm"</code></td><td>Top level only; path relative to this file</td></tr>
+</table>
+<p>One statement per line, or separate them with <code>;</code>.</p>
+
+<h2>Expressions</h2>
+<table>
+  <tr><th>Form</th><th>Example</th></tr>
+  <tr><td>Number</td><td><code>42</code> <code>3.14</code> <code>1_000_000</code> <code>0xFF</code> <code>6.02e23</code></td></tr>
+  <tr><td>String</td><td><code>"double"</code> <code>'single'</code> <code>"with {expr} inside"</code></td></tr>
+  <tr><td>List</td><td><code>[1, 2, 3]</code> (a trailing comma is fine)</td></tr>
+  <tr><td>Map</td><td><code>{name: "Ada", "two words": 2}</code></td></tr>
+  <tr><td>Range</td><td><code>0..10</code> (excludes 10), <code>0..=10</code> (includes 10)</td></tr>
+  <tr><td>Lambda</td><td><code>x =&gt; x * 2</code> <code>(a, b) =&gt; a + b</code> <code>() =&gt; { serve 1 }</code></td></tr>
+  <tr><td>Field</td><td><code>user.name</code></td></tr>
+  <tr><td>Index</td><td><code>list[0]</code> <code>list[-1]</code> <code>map["key"]</code> <code>text[2]</code></td></tr>
+  <tr><td>Call</td><td><code>f(1, 2)</code> <code>list.push(3)</code></td></tr>
+</table>
+
+<h2>Operators by precedence</h2>
+<table>
+  <tr><th>Level</th><th>Operators</th></tr>
+  <tr><td>1 (tightest)</td><td><code>f()</code> <code>x[i]</code> <code>x.f</code></td></tr>
+  <tr><td>2</td><td><code>**</code> (right to left)</td></tr>
+  <tr><td>3</td><td>unary <code>-</code></td></tr>
+  <tr><td>4</td><td><code>*</code> <code>/</code> <code>%</code></td></tr>
+  <tr><td>5</td><td><code>+</code> <code>-</code></td></tr>
+  <tr><td>6</td><td><code>..</code> <code>..=</code></td></tr>
+  <tr><td>7</td><td><code>==</code> <code>!=</code> <code>&lt;</code> <code>&gt;</code> <code>&lt;=</code> <code>&gt;=</code> (not chainable)</td></tr>
+  <tr><td>8</td><td><code>not</code> <code>!</code></td></tr>
+  <tr><td>9</td><td><code>and</code> <code>&amp;&amp;</code></td></tr>
+  <tr><td>10 (loosest)</td><td><code>or</code> <code>||</code></td></tr>
+</table>
+
+<h2>String escapes</h2>
+<p><code>\n</code> new line, <code>\t</code> tab, <code>\r</code> carriage return, <code>\0</code> zero byte, <code>\\</code> backslash, <code>\"</code> and <code>\'</code> quotes, <code>\{</code> and <code>\}</code> literal braces.</p>
+
+<h2>Comments</h2>
+<p><code>--</code> to the end of the line. A line containing only <code>---</code> starts a block comment, and the next such line ends it.</p>
+
+<h2>Truthiness</h2>
+<p>Falsy: <code>false</code>, <code>nil</code>, <code>0</code>, <code>""</code>, <code>[]</code>, <code>{}</code>. Everything else is truthy.</p>
+
+<h2>Line rules</h2>
+<ul>
+  <li>Newlines end statements, except inside <code>( )</code>, <code>[ ]</code> and map literals.</li>
+  <li>A binary operator must be on the same line as its left operand.</li>
+  <li>A line may start with <code>.method()</code> to continue a chain from the line above.</li>
+  <li><code>nah</code> may start on the line after a closing <code>}</code>.</li>
+</ul>

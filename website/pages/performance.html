@@ -1,0 +1,84 @@
+<!--
+title: Performance
+description: How Sigma compiles code, why it is fast, benchmark results and tips for fast programs.
+-->
+<h1>Performance</h1>
+<p class="lead">How Sigma turns dynamic-looking code into fast native programs, and how to keep your code on the fast path.</p>
+
+<h2>How a program runs</h2>
+<pre class="output">
+app.sgm -> lexer -> parser -> checks and type inference -> C code -> clang or gcc -> native program
+</pre>
+<ol>
+  <li>Sigma reads your file and every file it yoinks, and checks the whole program for errors.</li>
+  <li>It works out the type of every variable, parameter and function result it can.</li>
+  <li>It writes a C program and compiles it with your system's C compiler at <code>-O2</code>.</li>
+  <li>The executable is saved in a cache (<code>~/.cache/sigma</code>), keyed by a fingerprint of the code and compiler. The next run of unchanged code skips straight to running it.</li>
+</ol>
+
+<h2>Type inference</h2>
+<p>Sigma is dynamically typed: a variable can hold anything. But most variables only ever hold one kind of value. When the compiler can prove a variable is always a number (or always a boolean), it stores it as a raw machine value instead of a general "any value" box.</p>
+<pre class="sigma">
+total: 0
+grind i in 0..1_000_000 {
+    total += i
+}
+</pre>
+<p>Here <code>total</code> and <code>i</code> are always numbers, so this compiles to the same C loop you'd write by hand:</p>
+<pre class="output">
+for (double v_i = 0; v_i < 1000000; v_i++) v_total = v_total + v_i;
+</pre>
+<p>This works across functions too. In <code>fib(n)</code>, if every call passes a number, <code>n</code> becomes a raw number and so does the result. You can see what the compiler produced with <code>sig emit file.sgm</code>.</p>
+
+<h3>Everything else</h3>
+<p>Values that can be several types, plus all strings, lists and maps, use a compact 16-byte tagged value with fast paths for the common cases:</p>
+<ul>
+  <li>memory comes from a fast bump allocator,</li>
+  <li>maps are hash tables that cache each string's hash,</li>
+  <li><code>s += text</code> appends in place when it can, so building strings in a loop isn't slow,</li>
+  <li>list indexing and number formatting have inline fast paths.</li>
+</ul>
+
+<h2>Benchmarks</h2>
+<p>From <code>bench/</code> in the repository. "Work" is the time measured inside each program around the benchmark itself, best of 20 runs. "Total" includes starting the process.</p>
+<table>
+  <tr><th>Benchmark</th><th>Sigma</th><th>Node.js</th><th>Python 3</th><th>C (-O2)</th></tr>
+  <tr><td>Sum of 1 million numbers (work)</td><td><strong>1.5 ms</strong></td><td>8.8 ms</td><td>150 ms</td><td>1.5 ms</td></tr>
+  <tr><td>Sum of 1 million numbers (total)</td><td><strong>15 ms</strong></td><td>129 ms</td><td>182 ms</td><td>7 ms</td></tr>
+  <tr><td>Recursive fib(30) (work)</td><td><strong>5.6 to 12.5 ms</strong></td><td>15.5 ms</td><td>232 ms</td><td></td></tr>
+  <tr><td>200,000 words counted in a map, then sorted (work)</td><td><strong>27 ms</strong></td><td>37 ms</td><td>124 ms</td><td></td></tr>
+</table>
+<p>Measured on an Intel Core i7-8750H laptop running macOS 15 with Apple clang 17. Laptop processors speed up and slow down with temperature, so results vary between runs. Run them on your machine:</p>
+<pre class="shell">
+python3 bench/run.py
+</pre>
+
+<h2>Writing fast Sigma</h2>
+<h3>Keep a variable to one type</h3>
+<p>A variable that is sometimes a number and sometimes <code>nil</code> or a string has to use the general representation everywhere. Use a number as the "nothing yet" value when a number is expected:</p>
+<pre class="sigma">
+nums: [3, 9, 4]
+
+-- slower: best is nil, then a number
+best: nil
+grind x in nums { fr best == nil or x > best { best: x } }
+
+-- faster: best is always a number
+best_n: -1
+grind x in nums { fr x > best_n { best_n: x } }
+</pre>
+
+<h3>Do heavy work inside functions</h3>
+<p>Local variables in a function are the easiest for the C compiler to keep in processor registers. Top-level variables that functions also use become globals, which are slightly slower in tight loops.</p>
+
+<h3>Prefer ranges for counting loops</h3>
+<p><code>grind i in 0..n</code> compiles to a plain C <code>for</code> loop. It doesn't build a list.</p>
+
+<h3>Build lists once</h3>
+<p><code>push</code> is cheap. <code>insert(0, x)</code> and <code>del(0)</code> move every other item, so avoid them on large lists in a loop.</p>
+
+<h3>Use sig build for repeated runs</h3>
+<p>Cached runs start fast, but a built executable skips even the cache lookup. For a tool that runs thousands of times from a script, build it.</p>
+
+<h2>Memory</h2>
+<p>Sigma doesn't have a garbage collector yet. Memory is allocated quickly and never freed while the program runs, then released all at once when it exits. Short-lived programs (scripts, tools, data processing, puzzles) don't notice. A program that runs for a long time and keeps creating new strings, lists or maps will keep growing, so long-running servers aren't a good fit for now.</p>

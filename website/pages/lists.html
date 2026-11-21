@@ -1,0 +1,146 @@
+<!--
+title: Lists
+description: Creating, reading, changing and transforming lists in Sigma.
+-->
+<h1>Lists</h1>
+<p class="lead">Ordered collections of values. A list can hold any mix of values, including other lists and maps.</p>
+
+<h2>Creating and reading</h2>
+<pre class="sigma" data-run>
+nums: [10, 20, 30]
+empty: []
+mixed: [1, "two", [3], {four: 4}]
+
+yap(nums[0], nums[-1], len(nums), len(empty))
+</pre>
+<pre class="output">
+10 30 3 0
+</pre>
+<p>Positions start at 0. Negative positions count from the end. Reading past the end is an error that tells you the list's length. If you'd rather get a default, use <code>get</code>:</p>
+<pre class="sigma" data-run>
+nums: [10, 20, 30]
+yap(nums.get(5, "none"))
+</pre>
+<pre class="output">
+none
+</pre>
+
+<h2>Changing a list</h2>
+<pre class="sigma" data-run>
+queue: ["a", "b"]
+queue.push("c")          -- add to the end
+queue.insert(0, "start") -- add at a position
+queue[1]: "A"            -- replace an item
+last: queue.pop()        -- remove and give back the last item
+first: queue.del(0)      -- remove and give back the item at a position
+yap(queue, last, first)
+</pre>
+<pre class="output">
+["A", "b"] c start
+</pre>
+<p><code>clear()</code> empties a list. All of these change the list in place.</p>
+
+<h3>Lists are shared, not copied</h3>
+<p>Assigning a list to another variable, or passing it to a function, shares the same list. Changes through one name are visible through the other. Use <code>copy()</code> when you need an independent list.</p>
+<pre class="sigma" data-run>
+a: [1, 2]
+b: a
+c: a.copy()
+b.push(3)
+yap(a, c)
+</pre>
+<pre class="output">
+[1, 2, 3] [1, 2]
+</pre>
+
+<h2>Searching</h2>
+<pre class="sigma" data-run>
+fruits: ["apple", "mango", "pear"]
+yap(fruits.has("mango"), fruits.find("pear"), fruits.find("kiwi"))
+</pre>
+<pre class="output">
+true 2 -1
+</pre>
+
+<h2>Transforming</h2>
+<p>These give back a new list and leave the original alone:</p>
+<pre class="sigma" data-run>
+nums: [4, 1, 3, 2]
+yap(nums.map(n => n * n))
+yap(nums.filter(n => n > 1))
+yap(nums.sort())
+yap(nums.sort("desc"))
+yap(nums.reverse())
+yap(nums.slice(1, 3))
+yap(nums + [9])
+yap(nums)
+</pre>
+<pre class="output">
+[16, 1, 9, 4]
+[4, 3, 2]
+[1, 2, 3, 4]
+[4, 3, 2, 1]
+[2, 3, 1, 4]
+[1, 3]
+[4, 1, 3, 2, 9]
+[4, 1, 3, 2]
+</pre>
+<p><code>map</code>, <code>filter</code> and <code>each</code> can also take the position as a second parameter:</p>
+<pre class="sigma" data-run>
+yap(["a", "b", "c"].map((x, i) => "{i}={x}"))
+</pre>
+<pre class="output">
+["0=a", "1=b", "2=c"]
+</pre>
+
+<h2>Sorting</h2>
+<p><code>sort()</code> puts numbers in numeric order and strings in alphabetical order. Give it a function to sort by a key, and <code>"desc"</code> to reverse the order. Sorting is stable: items with equal keys keep their original order.</p>
+<pre class="sigma" data-run>
+players: [
+    {name: "Zara", score: 1500},
+    {name: "Milo", score: 2300},
+    {name: "Kai", score: 900},
+]
+yap(players.sort(p => p.score).map(p => p.name))
+yap(players.sort(p => p.score, "desc").map(p => p.name))
+yap(players.sort(p => p.name).map(p => p.name))
+</pre>
+<pre class="output">
+["Kai", "Zara", "Milo"]
+["Milo", "Zara", "Kai"]
+["Kai", "Milo", "Zara"]
+</pre>
+
+<h2>Combining values</h2>
+<pre class="sigma" data-run>
+prices: [1200, 450, 3000]
+yap(prices.sum(), min(prices), max(prices))
+yap(prices.reduce((total, p) => total + p * 2, 0))
+yap(["tea", "bread", "eggs"].join(", "))
+</pre>
+<pre class="output">
+4650 450 3000
+9300
+tea, bread, eggs
+</pre>
+<p><code>reduce(f, start)</code> calls <code>f(total, item)</code> for each item, starting from <code>start</code>. <code>join(sep)</code> turns every item into text and puts <code>sep</code> between them.</p>
+
+<h2>Running code for each item</h2>
+<pre class="sigma" data-run>
+["a", "b"].each(x => yap(x))
+</pre>
+<pre class="output">
+a
+b
+</pre>
+<p>A <code>grind</code> loop does the same thing and is usually clearer. <code>each</code> is handy at the end of a chain.</p>
+
+<h2>Comparing lists</h2>
+<p><code>==</code> compares contents, item by item:</p>
+<pre class="sigma" data-run>
+yap([1, [2, 3]] == [1, [2, 3]], [1, 2] == [2, 1])
+</pre>
+<pre class="output">
+true false
+</pre>
+<p>All list methods are listed in the <a href="methods.html">methods reference</a>.</p>

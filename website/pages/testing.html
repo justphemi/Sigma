@@ -1,0 +1,123 @@
+<!--
+title: Testing
+description: Testing Sigma code with vibecheck, expected-output tests and continuous integration.
+-->
+<h1>Testing</h1>
+<p class="lead">Sigma doesn't need a test framework. <code>vibecheck</code>, a small script and your shell are enough.</p>
+
+<h2>Tests with vibecheck</h2>
+<p>A test file yoinks the code under test and checks results with <code>vibecheck(condition, message)</code>. If any check fails, the file stops with an error and a non-zero exit status.</p>
+<pre class="sigma" data-file="lib/textx.sgm">
+-- lib/textx.sgm
+cook slugify(title) {
+    words: title.lower().replace("-", " ").split()
+    serve words.join("-")
+}
+
+cook initials(name) {
+    serve name.split().map(w => w[0].upper()).join("")
+}
+</pre>
+<pre class="sigma" data-run>
+-- test_textx.sgm
+yoink "lib/textx.sgm"
+
+cook expect(got, want) {
+    vibecheck(got == want, "expected {want}, got {got}")
+}
+
+expect(slugify("Hello World"), "hello-world")
+expect(slugify("  Sigma   is-fast "), "sigma-is-fast")
+expect(initials("ada lovelace"), "AL")
+expect(initials(""), "")
+
+yap("textx: all tests passed")
+</pre>
+<pre class="output">
+textx: all tests passed
+</pre>
+<p>When something breaks, the error says what and where:</p>
+<pre class="output">
+error: vibe check failed: expected hello-world, got hello--world
+  --> tests/test_textx.sgm:5
+</pre>
+<p>The line points at the <code>vibecheck</code> inside <code>expect</code>. To see which call failed, put the input in the message, or call <code>vibecheck</code> directly in each test.</p>
+
+<h3>Testing errors</h3>
+<p>Check that bad input raises an error with <code>yolo</code>:</p>
+<pre class="sigma" data-run>
+cook parse_age(text) {
+    n: int(text)
+    fr n == nil or n < 0 { yeet "bad age: {text}" }
+    serve n
+}
+
+failed: false
+yolo { parse_age("-4") } oops e { failed: true }
+vibecheck(failed, "parse_age should reject negative ages")
+yap("ok")
+</pre>
+<pre class="output">
+ok
+</pre>
+
+<h2>A test runner</h2>
+<p>Save this as <code>tests/run.sh</code>. It runs every <code>test_*.sgm</code> file and reports the totals:</p>
+<pre class="output">
+#!/bin/sh
+cd "$(dirname "$0")" || exit 1
+pass=0
+fail=0
+for t in test_*.sgm; do
+    if sig "$t" > /dev/null 2> /tmp/sigma-test-err; then
+        pass=$((pass + 1))
+    else
+        fail=$((fail + 1))
+        echo "FAIL $t"
+        cat /tmp/sigma-test-err
+    fi
+done
+echo "$pass passed, $fail failed"
+[ "$fail" -eq 0 ]
+</pre>
+<pre class="shell">
+sh tests/run.sh
+</pre>
+<p>Because tests are cached like any program, running the suite again after a small change only recompiles the files that changed.</p>
+
+<h2>Expected-output tests</h2>
+<p>For programs that print a lot, compare the whole output with a saved file. Sigma's own test suite works this way.</p>
+<pre class="shell">
+# save the output once you've checked it by eye
+sig main.sgm data/sample.txt > tests/sample.expected
+
+# later, compare
+sig main.sgm data/sample.txt | diff tests/sample.expected - && echo same
+</pre>
+
+<h2>Checking without running</h2>
+<p><code>sig check</code> finds compile errors in a file and everything it yoinks, without running anything. It's fast enough to run on every save from your editor, or as a git pre-commit hook:</p>
+<pre class="shell">
+sig check main.sgm
+</pre>
+
+<h2>Running tests on GitHub</h2>
+<p>This workflow installs Sigma and runs your tests on every push. Save it as <code>.github/workflows/test.yml</code>:</p>
+<pre class="output">
+name: test
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Sigma
+        run: |
+          git clone --depth 1 https://github.com/justphemi/Sigma.git /tmp/sigma
+          cd /tmp/sigma && ./build.sh && sudo cp build/sig /usr/local/bin/
+      - name: Check
+        run: sig check main.sgm
+      - name: Test
+        run: sh tests/run.sh
+</pre>

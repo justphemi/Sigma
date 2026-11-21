@@ -1,0 +1,110 @@
+<!--
+title: Maps
+description: Key and value collections in Sigma, used for records, lookups and objects.
+-->
+<h1>Maps</h1>
+<p class="lead">Maps store values under string keys. Use them for records (a user, a product), lookup tables, counters, and objects with methods.</p>
+
+<h2>Creating and reading</h2>
+<pre class="sigma" data-run>
+user: {name: "Peters", age: 24, "favourite food": "amala"}
+
+yap(user.name)
+yap(user["age"])
+yap(user["favourite food"])
+yap(user.email)
+</pre>
+<pre class="output">
+Peters
+24
+amala
+nil
+</pre>
+<p>Keys that are plain names can be written bare; other keys need quotes. Read a field with a dot, or with square brackets when the key has spaces or is stored in a variable. A missing key gives <code>nil</code>.</p>
+
+<h2>Adding and changing</h2>
+<pre class="sigma" data-run>
+user: {name: "Peters", score: 10}
+user.score: 50
+user.score += 5
+user.level: 2
+key: "city"
+user[key]: "Abuja"
+yap(user)
+</pre>
+<pre class="output">
+{name: "Peters", score: 55, level: 2, city: "Abuja"}
+</pre>
+<p>Maps remember the order keys were added in, and print and loop in that order.</p>
+
+<h2>Checking and removing</h2>
+<pre class="sigma" data-run>
+stock: {rice: 4, beans: 0}
+yap(stock.has("rice"), stock.has("yam"))
+yap(stock.get("yam", 0))
+stock.del("beans")
+yap(stock, len(stock))
+</pre>
+<pre class="output">
+true false
+0
+{rice: 4} 1
+</pre>
+<p><code>has</code> checks whether a key exists (a key can exist with the value <code>nil</code> or <code>0</code>). <code>get(key, default)</code> reads a key and falls back to <code>default</code> when it's missing.</p>
+
+<h2>Keys, values and loops</h2>
+<pre class="sigma" data-run>
+ages: {Ada: 36, Tolu: 28}
+yap(ages.keys(), ages.values())
+grind name, age in ages { yap("{name} is {age}") }
+</pre>
+<pre class="output">
+["Ada", "Tolu"] [36, 28]
+Ada is 36
+Tolu is 28
+</pre>
+
+<h2>Counting things</h2>
+<p>A very common pattern: count how often each value appears.</p>
+<pre class="sigma" data-run>
+votes: ["jollof", "suya", "jollof", "puff-puff", "jollof", "suya"]
+counts: {}
+grind v in votes {
+    counts[v]: counts.get(v, 0) + 1
+}
+grind food in counts.keys().sort(k => counts[k], "desc") {
+    yap(food, counts[food])
+}
+</pre>
+<pre class="output">
+jollof 3
+suya 2
+puff-puff 1
+</pre>
+
+<h2>Number keys</h2>
+<p>Keys are always strings. A number used as a key is converted to text, so <code>m[1]</code> and <code>m["1"]</code> are the same entry.</p>
+
+<h2>Maps as objects</h2>
+<p>Store lambdas in a map to give it methods. Calling <code>thing.method()</code> calls the function stored under that key.</p>
+<pre class="sigma" data-run>
+cook make_account(owner) {
+    acct: {owner: owner, balance: 0}
+    acct.deposit: (amount) => { acct.balance += amount }
+    acct.report: () => "{acct.owner} has {acct.balance}"
+    serve acct
+}
+
+a: make_account("Chi")
+a.deposit(500)
+a.deposit(250)
+yap(a.report())
+</pre>
+<pre class="output">
+Chi has 750
+</pre>
+<p>This works because the lambdas hold a reference to the same map, so changes to <code>acct.balance</code> are shared.</p>
+<p>Avoid naming a method after one of the built-in map methods (<code>keys</code>, <code>values</code>, <code>has</code>, <code>get</code>, <code>del</code>, <code>copy</code>, <code>clear</code>): calling <code>m.keys()</code> always runs the built-in one. Any other name works.</p>
+
+<h2>Shared, not copied</h2>
+<p>Like lists, maps are shared when assigned or passed to a function. Use <code>copy()</code> for an independent map (it copies the top level only).</p>

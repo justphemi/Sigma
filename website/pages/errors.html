@@ -1,0 +1,152 @@
+<!--
+title: Errors
+description: Handling errors with yolo, oops and yeet, assertions with vibecheck, and reading error messages.
+-->
+<h1>Errors</h1>
+<p class="lead">How Sigma reports problems, and how your program can catch and raise its own errors.</p>
+
+<h2>Two kinds of errors</h2>
+<ul>
+  <li><strong>Compile errors</strong> are found before the program runs: typos, wrong number of arguments, using a variable that doesn't exist, changing a <code>lock</code> constant. The program doesn't start until they're fixed.</li>
+  <li><strong>Runtime errors</strong> happen while the program runs: reading past the end of a list, doing math on text, dividing by zero, opening a file that isn't there. You can catch these.</li>
+</ul>
+
+<h3>Reading a compile error</h3>
+<pre class="sigma" data-error>
+cook area(w, h) { serve w * h }
+yap(area(3))
+</pre>
+<pre class="output">
+error: 'area' takes 2 arguments, but got 1
+ --> main.sgm:2:5
+  |
+2 | yap(area(3))
+  |     ^^^^
+  = hint: it's defined as  cook area(w, h)
+</pre>
+<p>The first line says what's wrong. The arrow line gives <code>file:line:column</code>. Then comes the line of code with carets under the problem, and sometimes a hint with a suggested fix.</p>
+
+<h3>Reading a runtime error</h3>
+<pre class="sigma" data-run>
+price: "1200"
+yap(price * 2)
+</pre>
+<pre class="output">
+error: can't do math with this: expected a num, got str "1200"
+  --> main.sgm:2
+</pre>
+<p>An uncaught runtime error prints the message and the line, and stops the program with exit code 1. (Here the fix is <code>num(price) * 2</code>.)</p>
+
+<h2>Catching errors: yolo and oops</h2>
+<p>Put risky code in a <code>yolo</code> block. If anything inside fails, Sigma jumps to the <code>oops</code> block, with the error in the variable you name:</p>
+<pre class="sigma" data-run>
+yolo {
+    scores: [10, 20]
+    yap(scores[5])
+    yap("this line never runs")
+} oops e {
+    yap("caught: {e}")
+}
+yap("the program keeps going")
+</pre>
+<pre class="output">
+caught: index 5 is out of range (the list has 2 items)
+the program keeps going
+</pre>
+<p>Errors pass up through function calls until a <code>yolo</code> catches them, so you can put one <code>yolo</code> around a large piece of work.</p>
+<p>The <code>oops</code> part is optional. Without it, errors in the block are ignored:</p>
+<pre class="sigma" data-run>
+yolo { yap(1 / 0) }
+yap("still running")
+</pre>
+<pre class="output">
+still running
+</pre>
+<div class="tip"><strong>Use it sparingly</strong><p>Ignoring errors hides bugs. A <code>yolo</code> without <code>oops</code> is best for things that genuinely don't matter, like a cleanup step.</p></div>
+
+<h2>Raising errors: yeet</h2>
+<p><code>yeet</code> raises an error with any value. It's usually a message string:</p>
+<pre class="sigma" data-run>
+cook withdraw(balance, amount) {
+    fr amount > balance { yeet "not enough money (balance is {balance})" }
+    serve balance - amount
+}
+
+yolo {
+    yap(withdraw(100, 30))
+    yap(withdraw(100, 500))
+} oops e {
+    yap("failed: {e}")
+}
+</pre>
+<pre class="output">
+70
+failed: not enough money (balance is 100)
+</pre>
+<p>You can also yeet a map to attach details, and check them in <code>oops</code>:</p>
+<pre class="sigma" data-run>
+yolo {
+    yeet {code: 404, message: "user not found"}
+} oops e {
+    fr type(e) == "map" and e.code == 404 { yap("404:", e.message) }
+}
+</pre>
+<pre class="output">
+404: user not found
+</pre>
+<p>Errors raised by Sigma itself (like a bad index) arrive in <code>oops</code> as strings.</p>
+
+<h3>Passing an error on</h3>
+<p>Inside <code>oops</code>, <code>yeet</code> again to let a caller deal with it, perhaps with more context:</p>
+<pre class="sigma" data-run>
+cook load_config(path) {
+    yolo {
+        serve read_file(path)
+    } oops e {
+        yeet "couldn't load config: {e}"
+    }
+}
+
+yolo { load_config("missing.txt") } oops e { yap(e) }
+</pre>
+<pre class="output">
+couldn't load config: can't read file 'missing.txt': No such file or directory
+</pre>
+
+<h2>Assertions: vibecheck</h2>
+<p><code>vibecheck(condition, message)</code> raises an error when the condition is falsy. Use it to state what must be true, both in programs and in <a href="testing.html">tests</a>.</p>
+<pre class="sigma" data-run>
+cook set_age(age) {
+    vibecheck(type(age) == "num", "age must be a number")
+    vibecheck(age >= 0, "age can't be negative, got {age}")
+    serve age
+}
+yolo { set_age(-3) } oops e { yap(e) }
+</pre>
+<pre class="output">
+vibe check failed: age can't be negative, got -3
+</pre>
+
+<h2>Validating input</h2>
+<p>Since <code>num</code> gives <code>nil</code> for bad text, you can check input without catching anything:</p>
+<pre class="sigma" data-run data-stdin="twelve\n12\n">
+grind {
+    answer: num(ask("How many? "))
+    fr answer != nil { dip }
+    yap("please type a number")
+}
+yap("ok, {answer}")
+</pre>
+<pre class="output">
+How many? please type a number
+How many? ok, 12
+</pre>
+
+<h2>Exit codes</h2>
+<p>An uncaught error exits with status 1. Use <code>exit(code)</code> to end the program yourself with any status. A status of 0 means success to the shell and to tools like <code>make</code> and CI systems.</p>
+<pre class="sigma">
+fr len(args()) == 0 {
+    yap("usage: tool <file>")
+    exit(2)
+}
+</pre>

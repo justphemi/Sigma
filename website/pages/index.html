@@ -1,0 +1,72 @@
+<!--
+title: Introduction
+description: Sigma is a compiled programming language with a clean, Gen-Z syntax and C-level speed.
+-->
+<h1>Sigma</h1>
+<p class="lead">A small, compiled programming language with a friendly syntax. You write it like a scripting language. It runs as fast as C.</p>
+
+<div class="hero-actions">
+  <a class="btn primary" href="install.html">Install Sigma</a>
+  <a class="btn" href="first-program.html">Write your first program</a>
+  <a class="btn" href="basics.html">Learn the language</a>
+</div>
+
+<pre class="sigma" data-run>
+cook greet(name) {
+    serve "hey {name}, welcome in"
+}
+
+squad: ["Ana", "Ben", "Cy"]
+grind i, name in squad {
+    yap("{i + 1}. {greet(name)}")
+}
+
+total: 0
+grind n in 1..=1_000_000 { total += n }
+yap("sum of the first million numbers: {total}")
+</pre>
+<pre class="output">
+1. hey Ana, welcome in
+2. hey Ben, welcome in
+3. hey Cy, welcome in
+sum of the first million numbers: 500000500000
+</pre>
+
+<h2>Why Sigma</h2>
+<div class="cards">
+  <div class="card"><h4>Fast by default</h4><p>Sigma compiles to C and then to a native program. Code that works with numbers runs as fast as hand-written C.</p></div>
+  <div class="card"><h4>No boilerplate</h4><p>No type annotations, no semicolons, no main function. A program is just the lines you want to run.</p></div>
+  <div class="card"><h4>Errors that help</h4><p>Mistakes are caught before your program runs, with the exact line, a pointer to the problem and a hint for fixing it.</p></div>
+  <div class="card"><h4>One command</h4><p><code>sig app.sgm</code> compiles and runs. Unchanged programs start instantly from a cache. <code>sig build</code> makes a standalone executable.</p></div>
+</div>
+
+<h2>What it looks like</h2>
+<p>Sigma keeps the familiar ideas from Python and JavaScript and gives them short, memorable names:</p>
+<table>
+  <tr><th>Sigma</th><th>What it does</th></tr>
+  <tr><td><code>name: "Ada"</code></td><td>Create or change a variable</td></tr>
+  <tr><td><code>yap(name)</code></td><td>Print</td></tr>
+  <tr><td><code>fr</code> / <code>nah fr</code> / <code>nah</code></td><td>if / else if / else</td></tr>
+  <tr><td><code>grind</code></td><td>Every kind of loop</td></tr>
+  <tr><td><code>cook</code> and <code>serve</code></td><td>Define a function and return from it</td></tr>
+  <tr><td><code>yolo</code> / <code>oops</code> / <code>yeet</code></td><td>try / catch / throw</td></tr>
+  <tr><td><code>yoink "file.sgm"</code></td><td>Use code from another file</td></tr>
+</table>
+<p>The full list is on the <a href="syntax.html">syntax reference</a> page.</p>
+
+<h2>Good fits</h2>
+<ul>
+  <li>Command-line tools and scripts that need to be quick</li>
+  <li>Data crunching: logs, CSV-like text files, word counts, reports</li>
+  <li>Algorithms, puzzles, simulations and games in the terminal</li>
+  <li>Learning to program, with a language that explains its own errors</li>
+</ul>
+<p>Sigma is young (version 0.2). It doesn't have a garbage collector yet, so it isn't meant for long-running servers. See <a href="faq.html">FAQ and limitations</a> for the honest list.</p>
+
+<h2>Where to go next</h2>
+<div class="cards">
+  <a class="card" href="install.html"><h4>Installation</h4><p>Get the <code>sig</code> command on macOS or Linux in about a minute.</p></a>
+  <a class="card" href="first-program.html"><h4>Your first program</h4><p>Write, run, fix and build a small program.</p></a>
+  <a class="card" href="tutorial-cli.html"><h4>Build a real tool</h4><p>A step-by-step tutorial: a to-do list app that saves to a file.</p></a>
+  <a class="card" href="builtins.html"><h4>Reference</h4><p>Every built-in function, method and command, in one place.</p></a>
+</div>

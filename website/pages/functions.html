@@ -1,0 +1,165 @@
+<!--
+title: Functions
+description: Defining functions with cook, returning with serve, lambdas, closures and scope.
+-->
+<h1>Functions</h1>
+<p class="lead">Named functions with <code>cook</code>, quick inline functions with <code>=&gt;</code>, and how variables are shared between them.</p>
+
+<h2>Defining a function</h2>
+<pre class="sigma" data-run>
+cook add(a, b) {
+    serve a + b
+}
+
+yap(add(2, 3))
+</pre>
+<pre class="output">
+5
+</pre>
+<ul>
+  <li><code>cook</code> defines a function. Functions are defined at the top level of a file, not inside other blocks.</li>
+  <li><code>serve</code> gives back a value and leaves the function. A function that ends without <code>serve</code>, or with a bare <code>serve</code>, gives back <code>nil</code>.</li>
+  <li>Call it by name with parentheses. The number of arguments must match, and the compiler checks this.</li>
+</ul>
+<p>Functions can be called before they're defined in the file, so you can put the main logic at the top and helpers at the bottom.</p>
+<pre class="sigma" data-run>
+yap(shout("hello"))
+
+cook shout(text) {
+    serve text.upper() + "!"
+}
+</pre>
+<pre class="output">
+HELLO!
+</pre>
+
+<h3>Returning early</h3>
+<pre class="sigma" data-run>
+cook grade(score) {
+    fr score >= 90 { serve "A" }
+    fr score >= 80 { serve "B" }
+    serve "C"
+}
+yap(grade(95), grade(85), grade(10))
+</pre>
+<pre class="output">
+A B C
+</pre>
+
+<h3>Returning several values</h3>
+<p>Serve a list or a map:</p>
+<pre class="sigma" data-run>
+cook stats(nums) {
+    serve {low: min(nums), high: max(nums), avg: nums.sum() / len(nums)}
+}
+s: stats([4, 8, 15, 16, 23, 42])
+yap(s.low, s.high, s.avg)
+</pre>
+<pre class="output">
+4 42 18
+</pre>
+
+<h3>Recursion</h3>
+<pre class="sigma" data-run>
+cook fib(n) {
+    fr n < 2 { serve n }
+    serve fib(n - 1) + fib(n - 2)
+}
+yap(fib(20))
+</pre>
+<pre class="output">
+6765
+</pre>
+<p>If a recursive function never stops, the program ends with a clear "stack overflow" message instead of hanging.</p>
+
+<h2>Lambdas</h2>
+<p>A lambda is a function without a name, written with <code>=&gt;</code>. They're values, so you can store them in variables, put them in lists and maps, and pass them to other functions.</p>
+<pre class="sigma" data-run>
+double: x => x * 2
+add: (a, b) => a + b
+hello: () => "hello"
+yap(double(21), add(1, 2), hello())
+</pre>
+<pre class="output">
+42 3 hello
+</pre>
+<p>For more than one expression, give the lambda a block and <code>serve</code> the result:</p>
+<pre class="sigma" data-run>
+describe: (n) => {
+    fr n > 0 { serve "positive" }
+    fr n < 0 { serve "negative" }
+    serve "zero"
+}
+yap(describe(-4))
+</pre>
+<pre class="output">
+negative
+</pre>
+<p>Lambdas are what you pass to list methods like <code>map</code>, <code>filter</code> and <code>sort</code>:</p>
+<pre class="sigma" data-run>
+nums: [5, 3, 8, 1]
+yap(nums.map(n => n * 10), nums.filter(n => n > 2), nums.sort(n => -n))
+</pre>
+<pre class="output">
+[50, 30, 80, 10] [5, 3, 8] [8, 5, 3, 1]
+</pre>
+
+<h3>Named functions as values</h3>
+<p>Use a <code>cook</code> function's name without parentheses to pass it around:</p>
+<pre class="sigma" data-run>
+cook square(x) { serve x * x }
+yap([1, 2, 3].map(square))
+</pre>
+<pre class="output">
+[1, 4, 9]
+</pre>
+
+<h2>Closures</h2>
+<p>A lambda can use variables from where it was created. It takes a copy of their values at that moment:</p>
+<pre class="sigma" data-run>
+cook multiplier(k) {
+    serve x => x * k
+}
+triple: multiplier(3)
+times10: multiplier(10)
+yap(triple(7), times10(7))
+</pre>
+<pre class="output">
+21 70
+</pre>
+<p>Because it's a copy, a lambda can't reassign an outer variable. To keep changing state inside a lambda, store it in a map or list, which are shared rather than copied:</p>
+<pre class="sigma" data-run>
+counter: {n: 0}
+tick: () => { counter.n += 1 }
+tick()
+tick()
+yap(counter.n)
+</pre>
+<pre class="output">
+2
+</pre>
+
+<h2>Scope: where variables live</h2>
+<ul>
+  <li><strong>Top-level variables</strong> (assigned outside any function) are global. Every <code>cook</code> function can read and change them.</li>
+  <li><strong>Variables first assigned inside a function</strong> are local to that call.</li>
+  <li><strong>Parameters</strong> are always local, even if a global has the same name.</li>
+</ul>
+<pre class="sigma" data-run>
+high_score: 0
+
+cook submit(score) {
+    fr score > high_score { high_score: score }
+    bonus: score / 10     -- local to submit
+    serve bonus
+}
+
+submit(40)
+submit(95)
+submit(60)
+yap(high_score)
+</pre>
+<pre class="output">
+95
+</pre>
+<div class="tip"><strong>Tip</strong><p>Because functions can change globals, give globals clear names and keep most state local. Passing values in and serving results out keeps functions easy to test.</p></div>

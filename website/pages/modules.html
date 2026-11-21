@@ -1,0 +1,68 @@
+<!--
+title: Modules
+description: Splitting a Sigma program into several files with yoink.
+-->
+<h1>Modules</h1>
+<p class="lead">Split a program across files with <code>yoink</code>.</p>
+
+<h2>yoink</h2>
+<p>Put shared functions in their own file:</p>
+<pre class="sigma" data-file="mathx.sgm">
+-- mathx.sgm
+lock TAU: 6.283185307179586
+
+cook clamp(x, low, high) {
+    fr x < low { serve low }
+    fr x > high { serve high }
+    serve x
+}
+
+cook mean(nums) {
+    serve nums.sum() / len(nums)
+}
+</pre>
+<p>Then <code>yoink</code> it from another file and use its functions, constants and variables directly:</p>
+<pre class="sigma" data-run>
+yoink "mathx.sgm"
+
+yap(clamp(150, 0, 100))
+yap(mean([2, 4, 9]))
+yap(round(TAU))
+</pre>
+<pre class="output">
+100
+5
+6
+</pre>
+
+<h2>How it works</h2>
+<ul>
+  <li>Paths are relative to the file that contains the <code>yoink</code>, not to the folder you run <code>sig</code> from. Subfolders work: <code>yoink "lib/strings.sgm"</code>.</li>
+  <li>Each file is included once, even if several files yoink it, so shared helpers are safe to yoink from anywhere.</li>
+  <li>The top-level code in a yoinked file runs once, before the code after the <code>yoink</code>.</li>
+  <li>Everything lives in one namespace. Two files can't both define a function with the same name; the compiler reports both places so you can rename one.</li>
+  <li><code>yoink</code> goes at the top level of a file, usually at the start.</li>
+</ul>
+<p>Missing files are reported when you compile:</p>
+<pre class="sigma" data-error>
+yoink "helpers.sgm"
+</pre>
+<pre class="output">
+error: can't yoink './helpers.sgm': No such file or directory
+ --> main.sgm:1:1
+  |
+1 | yoink "helpers.sgm"
+  | ^
+  = hint: paths are relative to the file doing the yoink
+</pre>
+
+<h2>Naming</h2>
+<p>Because all files share one namespace, it helps to give functions in a library file a short common prefix, like <code>str_pad</code> and <code>str_center</code>, or to group them in a map:</p>
+<pre class="sigma">
+-- textx.sgm
+textx: {
+    pad: (s, n) => s + " ".repeat(n - len(s)),
+    center: (s, n) => " ".repeat(floor((n - len(s)) / 2)) + s,
+}
+</pre>
+<p>Callers then write <code>textx.pad("hi", 10)</code>. See <a href="project-layout.html">project layout</a> for how to organise a bigger program.</p>

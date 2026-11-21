@@ -9,6 +9,7 @@
 </p>
 
 <p align="center">
+  <a href="https://justphemi.github.io/Sigma/"><strong>Documentation</strong></a> •
   <a href="#install">Install</a> •
   <a href="#quick-start">Quick Start</a> •
   <a href="#the-language">The Language</a> •
@@ -406,9 +407,5 @@ MIT License - feel free to use Sigma in your projects!
 ---
 
 <p align="center">
-  Made with HATRED by Phemi
-</p>
-
-<p align="center">
-  <sub>Sigma - Write less, run faster</sub>
+  Made by Phemi
 </p>

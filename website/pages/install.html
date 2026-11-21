@@ -1,0 +1,115 @@
+<!--
+title: Installation
+description: Install the Sigma compiler on macOS or Linux.
+-->
+<h1>Installation</h1>
+<p class="lead">Sigma installs as a single command called <code>sig</code>. You build it from source, which takes under a minute.</p>
+
+<h2>Requirements</h2>
+<ul>
+  <li><strong>macOS or Linux.</strong> Windows users can use WSL (Windows Subsystem for Linux) and follow the Linux steps.</li>
+  <li><strong>A C and C++ compiler</strong> (clang or gcc). Sigma turns your code into C and uses this compiler to make the final program.</li>
+  <li><strong>git</strong>, to download the source.</li>
+</ul>
+
+<h3>macOS</h3>
+<p>Install Apple's command line tools, which include clang and git:</p>
+<pre class="shell">
+xcode-select --install
+</pre>
+<p>If it says they're already installed, you're set.</p>
+
+<h3>Ubuntu and Debian</h3>
+<pre class="shell">
+sudo apt update
+sudo apt install build-essential git
+</pre>
+
+<h3>Fedora</h3>
+<pre class="shell">
+sudo dnf install gcc gcc-c++ make git
+</pre>
+
+<h3>Arch Linux</h3>
+<pre class="shell">
+sudo pacman -S base-devel git
+</pre>
+
+<h2>Build Sigma</h2>
+<pre class="shell">
+git clone https://github.com/justphemi/Sigma.git
+cd Sigma
+./build.sh
+</pre>
+<p>This creates the compiler at <code>build/sig</code>. You can already use it from inside the folder:</p>
+<pre class="shell">
+./build/sig examples/hello.sgm
+</pre>
+<pre class="output">
+Hello, Sigma!
+</pre>
+
+<h2>Put sig on your PATH</h2>
+<p>To run <code>sig</code> from any folder, install it:</p>
+<pre class="shell">
+./build.sh install
+</pre>
+<p>This copies <code>sig</code> to <code>/usr/local/bin</code>. It only asks for your password if that folder needs it. To install somewhere else, set <code>PREFIX</code>:</p>
+<pre class="shell">
+# installs to ~/.local/bin/sig
+PREFIX=~/.local ./build.sh install
+</pre>
+<p>If you use a custom prefix, make sure its <code>bin</code> folder is on your PATH. For zsh (the macOS default), add this line to <code>~/.zshrc</code>; for bash, add it to <code>~/.bashrc</code>:</p>
+<pre class="shell">
+export PATH="$HOME/.local/bin:$PATH"
+</pre>
+
+<h2>Check that it works</h2>
+<pre class="shell">
+sig version
+</pre>
+<pre class="output">
+sigma 0.2.0
+</pre>
+<p>Then run the test suite if you like. It compiles and runs a few dozen small programs:</p>
+<pre class="shell">
+./tests/run.sh
+</pre>
+
+<h2>Editor support</h2>
+<p>The repository includes a VS Code extension in <code>sigma-icons/</code> with syntax highlighting, comment toggling, bracket matching and a file icon for <code>.sgm</code> files. To install it from the source folder:</p>
+<pre class="shell">
+cd sigma-icons
+npx @vscode/vsce package
+code --install-extension sigma-icons-*.vsix
+</pre>
+<p>Other editors can use the TextMate grammar in <code>syntaxes/sigma.tmLanguage.json</code>, which works with Sublime Text, Zed, JetBrains IDEs (through the TextMate bundles plugin) and most editors that read TextMate grammars.</p>
+
+<h2>Updating</h2>
+<pre class="shell">
+cd Sigma
+git pull
+./build.sh
+./build.sh install
+sig clean
+</pre>
+<p><code>sig clean</code> clears the compile cache so every program is rebuilt with the new version.</p>
+
+<h2>Uninstalling</h2>
+<pre class="shell">
+sudo rm /usr/local/bin/sig
+rm -rf ~/.cache/sigma
+</pre>
+
+<h2>Troubleshooting</h2>
+<h3>"couldn't run the C compiler"</h3>
+<p>Sigma needs <code>cc</code>, <code>clang</code> or <code>gcc</code> on your PATH. Install one with the commands above. To use a specific compiler, set <code>SIGMA_CC</code>:</p>
+<pre class="shell">
+SIGMA_CC=gcc-14 sig app.sgm
+</pre>
+
+<h3>"command not found: sig"</h3>
+<p>The folder you installed to isn't on your PATH. Run <code>./build.sh install</code> again and note the folder it prints, or call it with the full path, like <code>~/Sigma/build/sig</code>.</p>
+
+<h3>The first run is slow</h3>
+<p>The first time you run a program, Sigma compiles it with the C compiler, which takes about a second. After that, it runs straight from the cache in <code>~/.cache/sigma</code> until you change the code.</p>

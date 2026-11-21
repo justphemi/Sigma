@@ -1,0 +1,215 @@
+<!--
+title: Tutorial: a to-do app
+description: Build a complete command-line to-do list app in Sigma, step by step.
+-->
+<h1>Tutorial: a to-do app</h1>
+<p class="lead">Build a real command-line tool from scratch: a to-do list that saves to a file, handles bad input, and ships as a single executable.</p>
+
+<p>Here's the finished app in use:</p>
+<pre class="shell">
+todo add buy plantain
+todo add finish the docs
+todo done 2
+todo list
+</pre>
+<pre class="output">
+added: buy plantain
+added: finish the docs
+nice, finished: finish the docs
+1. [ ] buy plantain
+2. [x] finish the docs
+</pre>
+<p>Along the way you'll use <a href="modules.html">modules</a>, <a href="maps.html">maps</a>, <a href="input-output.html">files and arguments</a>, and <a href="errors.html">error handling</a>.</p>
+
+<h2>1. Plan the data</h2>
+<p>Each task has some text and a done flag. In the program, a task is a map:</p>
+<pre class="sigma">
+task: {done: false, text: "buy plantain"}
+</pre>
+<p>On disk, we'll save one task per line, starting with <code>x</code> for done tasks and a space for open ones, then a <code>|</code> and the text:</p>
+<pre class="output">
+ |buy plantain
+x|finish the docs
+</pre>
+<p>A plain-text format like this is easy to read, easy to edit by hand and easy to parse.</p>
+
+<h2>2. Set up the project</h2>
+<pre class="shell">
+mkdir todo
+cd todo
+mkdir lib
+</pre>
+<p>We'll keep the code that reads and writes the file in <code>lib/store.sgm</code>, and the command handling in <code>todo.sgm</code>:</p>
+<pre class="output">
+todo/
+  todo.sgm         the app: reads the command and runs it
+  lib/
+    store.sgm      loading and saving tasks
+</pre>
+
+<h2>3. Loading and saving</h2>
+<p>Create <code>lib/store.sgm</code>:</p>
+<pre class="sigma" data-file="lib/store.sgm">
+-- lib/store.sgm: load and save tasks as lines of text
+-- Each line is "x|text" for a done task, or " |text" for an open one.
+
+cook load_tasks(path) {
+    tasks: []
+    fr not file_exists(path) { serve tasks }
+    grind line in read_file(path).split("\n") {
+        fr len(line) < 2 { skip }
+        tasks.push({done: line[0] == "x", text: line.slice(2)})
+    }
+    serve tasks
+}
+
+cook save_tasks(path, tasks) {
+    out: ""
+    grind t in tasks {
+        mark: " "
+        fr t.done { mark: "x" }
+        out += "{mark}|{t.text}\n"
+    }
+    write_file(path, out)
+}
+</pre>
+<p>A few things to notice:</p>
+<ul>
+  <li>If the file doesn't exist yet (the first run), <code>load_tasks</code> serves an empty list instead of failing.</li>
+  <li><code>skip</code> ignores blank lines, like the empty piece after the last new line.</li>
+  <li><code>line[0]</code> is the first character, and <code>line.slice(2)</code> is everything after <code>x|</code>.</li>
+  <li><code>save_tasks</code> builds the whole file in one string with <code>+=</code>, which is fast in Sigma, then writes it in one go.</li>
+</ul>
+
+<h2>4. The app</h2>
+<p>Create <code>todo.sgm</code>:</p>
+<pre class="sigma" data-file="todo.sgm">
+yoink "lib/store.sgm"
+
+lock FILE: "todo.txt"
+
+cook show(tasks) {
+    fr len(tasks) == 0 {
+        yap("nothing to do")
+        serve
+    }
+    grind i, t in tasks {
+        mark: " "
+        fr t.done { mark: "x" }
+        yap("{i + 1}. [{mark}] {t.text}")
+    }
+}
+
+cook task_number(text, tasks) {
+    n: int(text)
+    fr n == nil or n < 1 or n > len(tasks) {
+        yeet "there's no task {text} (you have {len(tasks)})"
+    }
+    serve n - 1
+}
+
+cook usage() {
+    yap("usage:")
+    yap("  todo list")
+    yap("  todo add <text>")
+    yap("  todo done <number>")
+    yap("  todo remove <number>")
+}
+
+a: args()
+fr len(a) == 0 {
+    usage()
+    exit(1)
+}
+
+tasks: load_tasks(FILE)
+command: a[0]
+rest: a.slice(1).join(" ")
+
+yolo {
+    fr command == "list" {
+        show(tasks)
+    } nah fr command == "add" {
+        vibecheck(rest != "", "add needs some text")
+        tasks.push({done: false, text: rest})
+        save_tasks(FILE, tasks)
+        yap("added: {rest}")
+    } nah fr command == "done" {
+        i: task_number(rest, tasks)
+        tasks[i].done: true
+        save_tasks(FILE, tasks)
+        yap("nice, finished: {tasks[i].text}")
+    } nah fr command == "remove" {
+        i: task_number(rest, tasks)
+        gone: tasks.del(i)
+        save_tasks(FILE, tasks)
+        yap("removed: {gone.text}")
+    } nah {
+        yap("unknown command '{command}'")
+        usage()
+        exit(1)
+    }
+} oops e {
+    yap("error: {e}")
+    exit(1)
+}
+</pre>
+<p>How it fits together:</p>
+<ul>
+  <li><code>yoink "lib/store.sgm"</code> brings in <code>load_tasks</code> and <code>save_tasks</code>.</li>
+  <li><code>args()</code> holds the words after the program name. The first is the command; the rest are joined back into the task text, so <code>todo add buy plantain</code> works without quotes.</li>
+  <li><code>task_number</code> turns what the user typed into a list position and <code>yeet</code>s a friendly error if it isn't a valid task number.</li>
+  <li>The whole command runs inside one <code>yolo</code>. Any problem, whether it's ours (<code>yeet</code>, <code>vibecheck</code>) or Sigma's (a file that can't be written), ends up in <code>oops</code>, which prints it and exits with status 1.</li>
+  <li><code>tasks[i].done: true</code> changes the map inside the list directly, because maps are shared, not copied.</li>
+</ul>
+
+<h2>5. Try it</h2>
+<pre class="shell">
+sig todo.sgm add buy plantain
+sig todo.sgm add finish the docs
+sig todo.sgm add call mum
+sig todo.sgm done 2
+sig todo.sgm remove 1
+sig todo.sgm list
+</pre>
+<pre class="output">
+added: buy plantain
+added: finish the docs
+added: call mum
+nice, finished: finish the docs
+removed: buy plantain
+1. [x] finish the docs
+2. [ ] call mum
+</pre>
+<p>And the mistakes a user might make:</p>
+<pre class="shell">
+sig todo.sgm done 9
+sig todo.sgm add
+</pre>
+<pre class="output">
+error: there's no task 9 (you have 2)
+error: vibe check failed: add needs some text
+</pre>
+<p>Look at <code>todo.txt</code> to see the saved data:</p>
+<pre class="output">
+x|finish the docs
+ |call mum
+</pre>
+<p>The first run of each version takes about a second while Sigma compiles. Every run after that starts instantly from the cache.</p>
+
+<h2>6. Ship it</h2>
+<p>Turn it into a standalone executable and put it on your PATH:</p>
+<pre class="shell">
+sig build todo.sgm -o todo
+sudo mv todo /usr/local/bin/
+todo list
+</pre>
+<p>The executable has everything built in, including <code>lib/store.sgm</code>, so it works from any folder without Sigma installed. It saves <code>todo.txt</code> in whatever folder you run it from. See <a href="shipping.html">Shipping</a> for more.</p>
+
+<h2>7. Ideas to extend it</h2>
+<ul>
+  <li>Add <code>todo clear</code> to remove every finished task. (Hint: <code>tasks.filter(t =&gt; not t.done)</code>.)</li>
+  <li>Add priorities: <code>todo add !buy plantain</code>, and sort high-priority tasks first with <code>sort</code>.</li>
+  <li>Show a summary like <code>3 open, 2 done</code> at the end of <code>list</code>.</li>
+  <li>Write tests for <code>load_tasks</code> and <code>save_tasks</code> using the approach in <a href="testing.html">Testing</a>.</li>
+</ul>

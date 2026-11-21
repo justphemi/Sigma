@@ -1,0 +1,52 @@
+<!--
+title: FAQ and limitations
+description: Common questions about Sigma and its current limitations.
+-->
+<h1>FAQ and limitations</h1>
+
+<h2>Questions</h2>
+<h3>Why the Gen-Z keywords?</h3>
+<p>They're short, easy to remember and fun, and each one maps to exactly one idea: <code>fr</code> is if, <code>grind</code> is every loop, <code>cook</code> defines and <code>serve</code> returns. Once you've written one program, you know them.</p>
+
+<h3>Is Sigma interpreted?</h3>
+<p>No. Every program is compiled to C and then to native machine code. The cache makes this feel like a scripting language: you run <code>sig app.sgm</code> and only wait the first time.</p>
+
+<h3>Is Sigma ready for production?</h3>
+<p>It's at version 0.2. It's solid for command-line tools, scripts, data processing, learning and experiments, and it has a test suite. It isn't ready for long-running services (no garbage collector yet), and the language may still change before 1.0.</p>
+
+<h3>Do I need to know C?</h3>
+<p>No. You need a C compiler installed, because Sigma uses it behind the scenes, but you never have to read or write C.</p>
+
+<h3>How does it compare to Python, JavaScript or Go?</h3>
+<p>It feels closest to Python or JavaScript: no types to write, lists and maps built in. It runs much faster than Python, and faster than Node.js on the benchmarks in <a href="performance.html">Performance</a>, while starting up quicker than both. Go and Rust have far bigger ecosystems, concurrency and memory management; Sigma is smaller and simpler.</p>
+
+<h3>Can I use C libraries?</h3>
+<p>Not yet. A way to call C functions is on the roadmap.</p>
+
+<h3>Does it work on Windows?</h3>
+<p>Through WSL (Windows Subsystem for Linux), yes. Native Windows support isn't there yet.</p>
+
+<h2 id="limitations">Current limitations</h2>
+<ul>
+  <li><strong>No garbage collector.</strong> Memory isn't freed until the program exits. Fine for programs that run and finish; not for servers that run for days.</li>
+  <li><strong>Strings are bytes.</strong> <code>len</code>, indexing and <code>slice</code> count bytes, so non-English text and symbols take more than one position each. <code>upper</code> and <code>lower</code> only change the letters A to Z.</li>
+  <li><strong>Lambdas copy outer variables.</strong> They can't reassign variables from the enclosing scope. Store changing state in a map or list instead.</li>
+  <li><strong><code>and</code> and <code>or</code> give booleans</strong>, not one of their operands, so <code>x or "default"</code> doesn't pick a value.</li>
+  <li><strong>One namespace.</strong> All yoinked files share function and global names.</li>
+  <li><strong>A function that reads a top-level variable before the top-level code has assigned it</strong> sees <code>nil</code> (or 0 for numbers).</li>
+  <li><strong>No standard library modules yet</strong> for JSON, HTTP, dates or regular expressions.</li>
+  <li><strong>macOS and Linux only</strong>, and a C compiler is needed to build programs (not to run built ones).</li>
+</ul>
+
+<h2>Roadmap</h2>
+<ul>
+  <li>Garbage collection</li>
+  <li>Standard library: JSON, HTTP, dates, regular expressions, environment variables</li>
+  <li>Structs or classes with methods</li>
+  <li>Calling C libraries</li>
+  <li>A package manager</li>
+  <li>A language server for editor autocompletion and inline errors</li>
+</ul>
+
+<h2>Getting help</h2>
+<p>Found a bug or have an idea? <a href="https://github.com/justphemi/Sigma/issues">Open an issue on GitHub</a>. Include the code, what you expected and what happened.</p>

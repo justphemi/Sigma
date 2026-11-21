@@ -1,0 +1,50 @@
+<!--
+title: The sig command
+description: Every sig command, option and environment variable.
+-->
+<h1>The sig command</h1>
+<p class="lead"><code>sig</code> compiles, runs, checks and builds Sigma programs.</p>
+
+<h2>Commands</h2>
+<table>
+  <tr><th>Command</th><th>Does</th></tr>
+  <tr><td><code>sig file.sgm [args...]</code></td><td>Compile (using the cache) and run. Arguments after the file go to <code>args()</code>.</td></tr>
+  <tr><td><code>sig run file.sgm [args...]</code></td><td>Same as above</td></tr>
+  <tr><td><code>sig build file.sgm [-o name]</code></td><td>Make a standalone executable. The default name is the file name without <code>.sgm</code>.</td></tr>
+  <tr><td><code>sig check file.sgm</code></td><td>Report compile errors without running. Exit status 0 if the file is fine.</td></tr>
+  <tr><td><code>sig emit file.sgm</code></td><td>Print the generated C code</td></tr>
+  <tr><td><code>sig clean</code></td><td>Delete the compile cache</td></tr>
+  <tr><td><code>sig version</code></td><td>Print the version (also <code>--version</code>, <code>-v</code>)</td></tr>
+  <tr><td><code>sig help</code></td><td>Print a summary of these commands (also <code>--help</code>, <code>-h</code>)</td></tr>
+</table>
+
+<h2>Environment variables</h2>
+<table>
+  <tr><th>Variable</th><th>Effect</th></tr>
+  <tr><td><code>SIGMA_CC</code></td><td>The C compiler to use, like <code>clang</code> or <code>gcc-14</code></td></tr>
+  <tr><td><code>CC</code></td><td>Used if <code>SIGMA_CC</code> isn't set. Otherwise Sigma uses <code>cc</code>.</td></tr>
+  <tr><td><code>SIGMA_CACHE</code></td><td>Where compiled programs are cached</td></tr>
+  <tr><td><code>XDG_CACHE_HOME</code></td><td>If set (and <code>SIGMA_CACHE</code> isn't), the cache is <code>$XDG_CACHE_HOME/sigma</code></td></tr>
+</table>
+<p>The default cache is <code>~/.cache/sigma</code>. It's safe to delete at any time.</p>
+
+<h2>Exit status</h2>
+<ul>
+  <li>Your program's own status when it runs (0, or whatever it passes to <code>exit</code>).</li>
+  <li>1 for a compile error or an uncaught runtime error.</li>
+</ul>
+
+<h2>Running a file as a script</h2>
+<p>Start a file with a <code>#!</code> line and mark it executable, and you can run it like any other command. Sigma ignores a first line that starts with <code>#!</code>.</p>
+<pre class="sigma" data-run data-file="hello">
+#!/usr/bin/env sig
+yap("hi from a script")
+</pre>
+<pre class="output">
+hi from a script
+</pre>
+<pre class="shell">
+chmod +x hello
+./hello
+</pre>
+<p>This uses the cache like <code>sig hello</code> would, so it starts instantly after the first run. For a tool other people will install, <code>sig build</code> is still the better choice, since it doesn't need Sigma on their machine.</p>

@@ -1,0 +1,7 @@
+-- Sum of the numbers 0 .. 999,999
+start: now()
+total: 0
+grind i in 0..1_000_000 {
+    total += i
+}
+yap("sum: {total}  loop: {round((now() - start) * 1_000_000) / 1000} ms")

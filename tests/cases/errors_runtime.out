@@ -1,0 +1,18 @@
+5
+caught: can't divide by zero
+index 10 is out of range (the list has 3 items)
+can't do math with this: expected a num, got str "a"
+division by zero
+can't read .name on nil nil (only maps have fields)
+list has no field .len - use len(x) to get the length
+vibe check failed: math broke
+can't call num 3 - it isn't a function
+404
+still running
+1 failed
+after loop
+count is 2
+rethrown inner
+before
+error: can't read .nope on num 2 (only maps have fields)
+  --> errors_runtime.sgm:56

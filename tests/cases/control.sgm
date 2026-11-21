@@ -1,0 +1,38 @@
+-- fr / nah / grind / dip / skip
+cook grade(score) {
+    fr score >= 90 { serve "A" }
+    nah fr score >= 80 { serve "B" }
+    nah { serve "C" }
+}
+yap(grade(95), grade(85), grade(10))
+
+grind i in 1..=15 {
+    fr i % 15 == 0 { yap("FizzBuzz") }
+    nah fr i % 3 == 0 { yap("Fizz") }
+    nah fr i % 5 == 0 { yap("Buzz") }
+    nah { yap(i) }
+}
+
+n: 0
+grind {
+    n++
+    fr n < 3 { skip }
+    fr n > 5 { dip }
+    yap("n is {n}")
+}
+
+-- variables set inside a block are visible after it
+fr true { inside: "visible" }
+yap(inside)
+
+total: 0
+grind i in 0..10 { total += i }
+yap(total, i)
+
+grind ch in "hey" { yap(ch) }
+grind i, v in ["a", "b"] { yap(i, v) }
+grind k, v in {x: 1, y: 2} { yap(k, v) }
+grind k in {first: 1} { yap(k) }
+
+flag: 3 > 2 and not (1 == 2)
+yap(flag, 1 < 2 or false, !true, 5 != 5)

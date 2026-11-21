@@ -1,7 +1,19 @@
 build/
 *.o
-*.out
-/tmp/
+a.out
 .DS_Store
 *.vsix
 node_modules/
+bench/.sum_c
+
+# never commit: agent/assistant files, private docs, secrets
+.claude/
+CLAUDE.md
+AGENTS.md
+.cursor/
+.aider*
+docs/
+classified/
+*.private.*
+.env
+.env.*

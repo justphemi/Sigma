@@ -1,0 +1,26 @@
+-- variables that change type still work (they just stay dynamic)
+v: 1
+v: "now a string"
+yap(v)
+cook ident(x) { serve x }
+yap(ident(1), ident("s"), ident([1]))
+cook maybe(n) {
+    fr n > 0 { serve n }
+}
+yap(maybe(5), maybe(-5))
+-- numbers stay exact up to 2^53
+big: 0
+grind i in 0..100 { big += 90_000_000_000_000 }
+yap(big)
+yap(0x1F, 1_000_000)
+-- ask() returns nil at end of input
+line: ask()
+yap(line)
+args_list: args()
+yap(args_list)
+start: now()
+yap(now() - start >= 0)
+r: rand()
+yap(r >= 0 and r < 1)
+d: rand_int(1, 6)
+yap(d >= 1 and d <= 6 and d == floor(d))

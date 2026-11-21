@@ -1,0 +1,23 @@
+-- Maps, lists and sorting: a tiny leaderboard
+
+squad: [
+    {name: "Zara", score: 1500, level: 12},
+    {name: "Milo", score: 2300, level: 18},
+    {name: "Kai", score: 900, level: 7},
+]
+
+squad.push({name: "Ivy", score: 2300, level: 20})
+
+-- give everyone a 10% bonus
+grind player in squad {
+    player.score += player.score / 10
+}
+
+ranked: squad.sort(p => p.score, "desc")
+grind i, p in ranked {
+    yap("{i + 1}. {p.name}  {p.score} pts  (lvl {p.level})")
+}
+
+avg: squad.map(p => p.score).sum() / len(squad)
+yap("average score: {round(avg)}")
+yap("top tier: {squad.filter(p => p.level >= 18).map(p => p.name).join(", ")}")

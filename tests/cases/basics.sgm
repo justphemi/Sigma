@@ -1,0 +1,27 @@
+-- variables, math, strings
+name: "Sigma"
+age: 2
+pi: 3.14159
+yap("hi {name}, you are {age}")
+yap(1 + 2 * 3, 10 / 4, 7 % 3, -7 % 3, 2 ** 10)
+yap(pi, 0.1 + 0.2, 1e21, -0.0, 1 / 3)
+yap("con" + "cat", "n=" + 5, 5 + "!")
+yap(true, nocap, cap, nil)
+yap(len("hello"), type(1), type("s"), type([]), type({}), type(nil), type(x => x))
+lock MAX: 100
+yap(MAX)
+x: 5
+x += 2
+x -= 1
+x *= 3
+x /= 2
+x %= 4
+x++
+yap(x)
+s: "ab"
+s += "cd"
+yap(s, s[0], s[-1])
+yap(num("42") + 1, num("nope"), int("3.9"), int(-3.9), str(12) + str(true))
+yap("escapes: tab\there, brace \{ok\}, quote \"q\" 'single'")
+yap('single quotes work {1 + 1}')
+yap(abs(-3), floor(2.7), ceil(2.1), round(2.5), sqrt(16), pow(2, 8), min(3, 1, 2), max([4, 9, 2]))

@@ -1,0 +1,56 @@
+-- yolo / oops / yeet
+cook divide(a, b) {
+    fr b == 0 { yeet "can't divide by zero" }
+    serve a / b
+}
+yolo {
+    yap(divide(10, 2))
+    yap(divide(1, 0))
+    yap("not reached")
+} oops e {
+    yap("caught:", e)
+}
+
+yolo { x: [1, 2, 3][10] } oops e { yap(e) }
+yolo { y: "a" - 1 } oops e { yap(e) }
+yolo { z: 5 / 0 } oops e { yap(e) }
+yolo { v: nil.name } oops e { yap(e) }
+yolo { v: [1].len } oops e { yap(e) }
+yolo { vibecheck(1 > 2, "math broke") } oops e { yap(e) }
+yolo { undefined_fn: 3; undefined_fn() } oops e { yap(e) }
+yolo { yeet {code: 404} } oops e { yap(e.code) }
+
+-- yolo without oops just ignores the error
+yolo { yeet "ignored" }
+yap("still running")
+
+-- serve and dip from inside yolo keep the error handler stack correct
+cook safe(f) {
+    yolo { serve f() } oops { serve "failed" }
+}
+yap(safe(() => 1), safe(() => [][0]))
+grind i in 0..5 {
+    yolo {
+        fr i == 2 { dip }
+    }
+}
+yolo { yeet "after loop" } oops e { yap(e) }
+
+-- variables changed inside yolo survive the jump
+count: 0
+yolo {
+    count += 1
+    count += 1
+    yeet "boom"
+} oops {
+    yap("count is", count)
+}
+
+-- nested
+yolo {
+    yolo { yeet "inner" } oops e { yeet "rethrown " + e }
+} oops e { yap(e) }
+
+-- a final uncaught error stops the program with a line number
+yap("before")
+v: [1, 2].pop().nope

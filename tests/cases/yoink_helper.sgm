@@ -1,0 +1,2 @@
+lock GREETING: "yo"
+cook shout(s) { serve s.upper() + "!" }

@@ -1,18 +1,32 @@
--- Loops and Conditionals in Sigma
+-- Loops and conditionals
 
--- For loop
-$for (i: 0, i < 5, i++) :: {
+-- count with a range (0..5 stops before 5, 1..=5 includes it)
+grind i in 0..5 {
     yap(i)
 }
 
--- While loop
+-- loop while a condition holds
 counter: 0
-$while counter < 3 :: {
-    yap(counter)
+grind counter < 3 {
+    yap("counter is {counter}")
     counter++
 }
 
--- Conditionals
+-- loop over a list, with or without the index
+squad: ["Ana", "Ben", "Cy"]
+grind name in squad { yap("hey {name}") }
+grind i, name in squad { yap("{i + 1}. {name}") }
+
+-- fr / nah fr / nah
 age: 25
-$if age > 18 :: yap("Adult")
-$el :: yap("Minor")
+fr age >= 65 { yap("Senior") }
+nah fr age >= 18 { yap("Adult") }
+nah { yap("Minor") }
+
+-- loop forever, dip (break) out
+n: 1
+grind {
+    n *= 2
+    fr n > 100 { dip }
+}
+yap("first power of two over 100: {n}")

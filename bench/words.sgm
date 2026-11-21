@@ -1,0 +1,9 @@
+-- Dynamic code: build 200k strings, count them in a map, sort
+start: now()
+counts: {}
+grind i in 0..200_000 {
+    key: "w" + str(i % 1000)
+    counts[key]: counts.get(key, 0) + 1
+}
+top: counts.keys().sort(k => counts[k], "desc").slice(0, 3)
+yap("keys: {len(counts)}  top: {top}  time: {round((now() - start) * 1_000_000) / 1000} ms")

@@ -1,0 +1,51 @@
+nums: [5, 2, 8, 1, 9]
+yap(nums, len(nums), nums[0], nums[-1])
+nums.push(3)
+yap(nums.pop(), nums)
+yap(nums.sort(), nums.sort("desc"), nums)
+yap(nums.has(8), nums.has(42), nums.find(8), nums.find(42))
+yap(nums.slice(1, 3), nums.slice(-2), nums.reverse(), nums.sum())
+yap(nums.join(", "), [1, "two", true, nil, [3]])
+nums[0]: 100
+nums.insert(1, 7)
+yap(nums, nums.del(0), nums)
+yap([1, 2] + [3], [] == [], [1, [2]] == [1, [2]], [1] == [2])
+yap(0..5, 1..=3)
+
+words: ["banana", "kiwi", "apple"]
+yap(words.sort(), words.sort(w => len(w)), words.sort(w => len(w), "desc"))
+
+people: [{name: "Zoe", age: 30}, {name: "Ash", age: 25}]
+yap(people.sort(p => p.age).map(p => p.name))
+
+player: {name: "Peters", age: 24, score: 1500}
+yap(player, player.name, player["score"], player.missing)
+player.score: 2000
+player.score += 5
+player["level"]: 3
+player.tags: ["pro"]
+player.tags.push("goat")
+yap(player)
+yap(player.keys(), player.values().slice(0, 2), player.has("age"), player.del("age"), player.has("age"))
+yap(player.get("nope", "default"), len(player))
+m: {}
+grind i in 0..1000 { m[str(i)]: i * i }
+yap(len(m), m["999"], m[500])
+copy: player.copy()
+copy.name: "Changed"
+yap(player.name, copy.name)
+yap({"weird key": 1, ok: 2})
+
+-- methods stored in maps
+dog: {name: "Rex", speak: () => "woof"}
+yap(dog.speak())
+
+-- strings
+s: "  Hello, World  "
+yap(s.trim(), s.upper(), s.lower().trim(), len(s))
+yap("a,b,,c".split(","), "one two  three".split(), "abc".split(""))
+yap("hello".has("ell"), "hello".find("l"), "hello".starts("he"), "hello".ends("lo"))
+yap("hello".replace("l", "L"), "ab".repeat(3), "hello".slice(1, 3), "abc".reverse(), "hey".chars())
+long: ""
+grind i in 0..5 { long += str(i) }
+yap(long)

@@ -1,0 +1,2 @@
+total: 0
+grind i in 0..3 { totl += i }

@@ -1,8 +1,3 @@
 -- Hello World in Sigma
-name: "Christopher Jenkins"
-age: 45
-weight: 61.835
-
-yap("Hello from Sigma!")
-yap(name)
-yap(age)
+name: "Sigma"
+yap("Hello, {name}!")

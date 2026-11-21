@@ -1,0 +1,24 @@
+[5, 2, 8, 1, 9] 5 5 9
+3 [5, 2, 8, 1, 9]
+[1, 2, 5, 8, 9] [9, 8, 5, 2, 1] [5, 2, 8, 1, 9]
+true false 2 -1
+[2, 8] [1, 9] [9, 1, 8, 2, 5] 25
+5, 2, 8, 1, 9 [1, "two", true, nil, [3]]
+[7, 2, 8, 1, 9] 100 [7, 2, 8, 1, 9]
+[1, 2, 3] true true false
+[0, 1, 2, 3, 4] [1, 2, 3]
+["apple", "banana", "kiwi"] ["kiwi", "apple", "banana"] ["banana", "apple", "kiwi"]
+["Ash", "Zoe"]
+{name: "Peters", age: 24, score: 1500} Peters 1500 nil
+{name: "Peters", age: 24, score: 2005, level: 3, tags: ["pro", "goat"]}
+["name", "age", "score", "level", "tags"] ["Peters", 24] true true false
+default 4
+1000 998001 250000
+Peters Changed
+{"weird key": 1, ok: 2}
+woof
+Hello, World   HELLO, WORLD   hello, world 16
+["a", "b", "", "c"] ["one", "two", "three"] ["a", "b", "c"]
+true 2 true true
+heLLo ababab el cba ["h", "e", "y"]
+01234

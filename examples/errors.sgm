@@ -1,0 +1,32 @@
+-- Error handling: yolo (try), oops (catch), yeet (throw)
+
+cook divide(a, b) {
+    fr b == 0 { yeet "can't divide by zero, bestie" }
+    serve a / b
+}
+
+yolo {
+    yap(divide(10, 4))
+    yap(divide(1, 0))
+} oops e {
+    yap("caught: {e}")
+}
+
+-- runtime errors are catchable too
+yolo {
+    scores: [10, 20]
+    yap(scores[5])
+} oops e {
+    yap("caught: {e}")
+}
+
+-- parse user input safely
+cook parse_age(text) {
+    age: num(text)
+    fr age == nil { yeet "'{text}' isn't a number" }
+    vibecheck(age >= 0, "age can't be negative")
+    serve age
+}
+grind input in ["21", "abc", "-4"] {
+    yolo { yap("age: {parse_age(input)}") } oops e { yap("nope: {e}") }
+}

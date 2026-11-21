@@ -14,7 +14,7 @@ cp sigma-icons/icons/sigma.svg sigma-icon.svg
 cat > .gitignore << 'EOF'
 build/
 *.o
-*.out
+a.out
 /tmp/
 .DS_Store
 *.vsix

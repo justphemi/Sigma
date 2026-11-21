@@ -1,801 +1,622 @@
-#include "../include/ast.h"
-#include <string>
-#include <sstream>
-#include <set>
+// C code generation.
+//
+// Each expression compiles to a C expression plus its static type:
+//   NUM  -> double      BOOL -> bool      DYN -> SigValue (tagged union)
+// Conversions between them (boxing, checked unboxing) are inserted only where
+// types meet, so number-only code compiles to the same C you'd write by hand.
+//
+// C leaves the evaluation order of function arguments unspecified. Sigma
+// promises left-to-right, so whenever more than one operand could have side
+// effects, operands are first stored into temporaries inside a GNU statement
+// expression `({ ... })`. The C optimizer removes those temporaries again.
+#include "codegen.h"
+
+#include <cmath>
+#include <cstdio>
+#include <functional>
 #include <map>
 
-class CodeGen {
-    std::stringstream code;
-    int indent = 0;
-    std::set<std::string> constants;
-    
-    void emit(std::string s) {
-        for (int i = 0; i < indent; i++) code << "  ";
-        code << s << "\n";
-    }
-    
-    std::string genExpr(ASTNode* node) {
-        if (node->type == NODE_LITERAL) {
-            if (node->value[0] == '"') {
-                std::string escaped = node->value;
-                std::string result;
-                for (char c : escaped) {
-                    if (c == '"') result += "\\\"";
-                    else result += c;
-                }
-                return "sigma_make_literal(\"" + result + "\")";
-            } else {
-                return "sigma_make_literal(\"" + node->value + "\")";
-            }
-        }
-        
-        if (node->type == NODE_IDENT) {
-            return node->value;
-        }
-        
-        if (node->type == NODE_BINARY_OP) {
-            std::string left = genExpr(node->children[0].get());
-            std::string right = genExpr(node->children[1].get());
-            
-            if (node->value == "+") {
-                return "sigma_add(" + left + ", " + right + ")";
-            } else if (node->value == "-") {
-                return "sigma_subtract(" + left + ", " + right + ")";
-            } else if (node->value == "*") {
-                return "sigma_multiply(" + left + ", " + right + ")";
-            } else if (node->value == "/") {
-                return "sigma_divide(" + left + ", " + right + ")";
-            } else if (node->value == "%") {
-                return "sigma_modulo(" + left + ", " + right + ")";
-            } else if (node->value == "==") {
-                return "sigma_equals(" + left + ", " + right + ")";
-            } else if (node->value == "===") {
-                return "sigma_strict_equals(" + left + ", " + right + ")";
-            } else if (node->value == "!=") {
-                return "sigma_not_equals(" + left + ", " + right + ")";
-            } else if (node->value == "<") {
-                return "sigma_less_than(" + left + ", " + right + ")";
-            } else if (node->value == ">") {
-                return "sigma_greater_than(" + left + ", " + right + ")";
-            } else if (node->value == "<=") {
-                return "sigma_less_equal(" + left + ", " + right + ")";
-            } else if (node->value == ">=") {
-                return "sigma_greater_equal(" + left + ", " + right + ")";
-            } else if (node->value == "&&") {
-                return "sigma_logical_and(" + left + ", " + right + ")";
-            } else if (node->value == "||") {
-                return "sigma_logical_or(" + left + ", " + right + ")";
-            }
-            
-            return "sigma_make_nil()";
-        }
-        
-        if (node->type == NODE_FUNC_CALL) {
-            // Check for check_type() function
-            if (node->value == "check_type" && node->children.size() == 1) {
-                return "sigma_type_of(" + genExpr(node->children[0].get()) + ")";
-            }
-            // Check for to_int() function
-            if (node->value == "to_int" && node->children.size() == 1) {
-                return "sigma_to_int(" + genExpr(node->children[0].get()) + ")";
-            }
-            // Check for to_dec() function
-            if (node->value == "to_dec" && node->children.size() == 1) {
-                return "sigma_to_dec(" + genExpr(node->children[0].get()) + ")";
-            }
-            // Check for to_str() function
-            if (node->value == "to_str" && node->children.size() == 1) {
-                return "sigma_to_str(" + genExpr(node->children[0].get()) + ")";
-            }
-            // Check for random() function
-            if (node->value == "random" && node->children.size() == 1) {
-                return "sigma_random(" + genExpr(node->children[0].get()) + ")";
-            }
-            // Check for random_range() function
-            if (node->value == "random_range" && node->children.size() == 2) {
-                return "sigma_random_range(" + genExpr(node->children[0].get()) + ", " + genExpr(node->children[1].get()) + ")";
-            }
-            
-            std::string call = node->value + "(";
-            for (size_t i = 0; i < node->children.size(); i++) {
-                call += genExpr(node->children[i].get());
-                if (i < node->children.size() - 1) call += ", ";
-            }
-            call += ")";
-            return call;
-        }
-        
-        if (node->type == NODE_ARRAY) {
-            std::string arrCode = "sigma_make_array()";
-            std::string tempArr = "temp_arr_" + std::to_string(rand());
-            emit("SigmaValue " + tempArr + " = " + arrCode + ";");
-            for (auto& child : node->children) {
-                emit("sigma_array_push(" + tempArr + ", " + genExpr(child.get()) + ");");
-            }
-            return tempArr;
-        }
-        
-        if (node->type == NODE_OBJECT) {
-            std::string objCode = "sigma_make_object()";
-            std::string tempObj = "temp_obj_" + std::to_string(rand());
-            emit("SigmaValue " + tempObj + " = " + objCode + ";");
-            for (auto& child : node->children) {
-                std::string key = child->value;
-                std::string val = genExpr(child->children[0].get());
-                emit("sigma_object_set(" + tempObj + ", \"" + key + "\", " + val + ");");
-            }
-            return tempObj;
-        }
-        
-        if (node->type == NODE_MEMBER_ACCESS) {
-            std::string obj = genExpr(node->children[0].get());
-            std::string member = node->children[1]->value;
-            
-            if (member == "sort" && node->children.size() > 2) {
-                std::string order = genExpr(node->children[2].get());
-                return "sigma_array_sort(" + obj + ", " + order + ")";
-            }
-            
-            return "sigma_object_get(" + obj + ", \"" + member + "\")";
-        }
-        
-        if (node->type == NODE_INDEX_ACCESS) {
-            std::string arr = genExpr(node->children[0].get());
-            std::string idx = genExpr(node->children[1].get());
-            return "sigma_array_get(" + arr + ", " + idx + ")";
-        }
-        
-        return "sigma_make_nil()";
-    }
-    
-    void genStmt(ASTNode* node) {
-        if (node->type == NODE_INPUT) {
-            std::string varName = node->value;
-            std::string prompt = "";
-            
-            if (!node->children.empty()) {
-                std::string literal = node->children[0]->value;
-                if (literal.length() >= 2 && literal[0] == '"' && literal[literal.length()-1] == '"') {
-                    prompt = literal.substr(1, literal.length() - 2);
-                }
-            }
-            
-            emit("SigmaValue " + varName + " = sigma_input(\"" + prompt + "\");");
-        }
-        
-        if (node->type == NODE_VAR_DECL) {
-            bool isConstant = node->value.find("$fixed_") == 0;
-            std::string varName = node->value;
-            
-            if (isConstant) {
-                constants.insert(varName);
-            }
-            
-            std::string value = genExpr(node->children[0].get());
-            emit("SigmaValue " + varName + " = " + value + ";");
-        }
-        
-        if (node->type == NODE_ASSIGNMENT) {
-            std::string varName = node->children[0]->value;
-            
-            if (constants.count(varName) > 0) {
-                emit("sigma_error(\"Cannot reassign constant variable: " + varName + "\");");
-                emit("exit(1);");
-                return;
-            }
-            
-            if (node->children[0]->type == NODE_MEMBER_ACCESS) {
-                std::string obj = genExpr(node->children[0]->children[0].get());
-                std::string member = node->children[0]->children[1]->value;
-                std::string value = genExpr(node->children[1].get());
-                emit("sigma_object_set(" + obj + ", \"" + member + "\", " + value + ");");
-            } else if (node->children[0]->type == NODE_INDEX_ACCESS) {
-                std::string arr = genExpr(node->children[0]->children[0].get());
-                std::string idx = genExpr(node->children[0]->children[1].get());
-                std::string value = genExpr(node->children[1].get());
-                emit("sigma_array_set(" + arr + ", " + idx + ", " + value + ");");
-            } else {
-                std::string value = genExpr(node->children[1].get());
-                emit(varName + " = " + value + ";");
-            }
-        }
-        
-        if (node->type == NODE_YAP) {
-            std::string expr = genExpr(node->children[0].get());
-            emit("sigma_print(" + expr + ");");
-        }
-        
-        if (node->type == NODE_RETURN) {
-            emit("return " + genExpr(node->children[0].get()) + ";");
-        }
-        
-        if (node->type == NODE_IF) {
-            emit("if (sigma_is_truthy(" + genExpr(node->children[0].get()) + ")) {");
-            indent++;
-            if (node->children[1]->type == NODE_BLOCK) {
-                for (auto& child : node->children[1]->children) genStmt(child.get());
-            } else {
-                genStmt(node->children[1].get());
-            }
-            indent--;
-            
-            for (size_t i = 2; i < node->children.size(); i++) {
-                emit("} else {");
-                indent++;
-                if (node->children[i]->type == NODE_BLOCK) {
-                    for (auto& child : node->children[i]->children) genStmt(child.get());
-                } else {
-                    genStmt(node->children[i].get());
-                }
-                indent--;
-            }
-            emit("}");
-        }
-        
-        if (node->type == NODE_FOR) {
-            std::string initVar = node->children[0]->value;
-            std::string initVal = genExpr(node->children[0]->children[0].get());
-            std::string cond = genExpr(node->children[1].get());
-            std::string incVar = node->children[2]->children[0]->value;
-            
-            emit("for (SigmaValue " + initVar + " = " + initVal + "; " + 
-                 "sigma_is_truthy(" + cond + "); " + incVar + " = sigma_add(" + incVar + ", sigma_make_number(1))) {");
-            indent++;
-            if (node->children[3]->type == NODE_BLOCK) {
-                for (auto& child : node->children[3]->children) genStmt(child.get());
-            } else {
-                genStmt(node->children[3].get());
-            }
-            indent--;
-            emit("}");
-        }
-        
-        if (node->type == NODE_WHILE) {
-            emit("while (sigma_is_truthy(" + genExpr(node->children[0].get()) + ")) {");
-            indent++;
-            if (node->children[1]->type == NODE_BLOCK) {
-                for (auto& child : node->children[1]->children) genStmt(child.get());
-            } else {
-                genStmt(node->children[1].get());
-            }
-            indent--;
-            emit("}");
-        }
-        
-        if (node->type == NODE_TRY_CATCH) {
-            emit("if (1) {");
-            indent++;
-            for (auto& stmt : node->children[0]->children) {
-                genStmt(stmt.get());
-            }
-            indent--;
-            emit("}");
-            
-            if (node->children.size() > 1) {
-                std::string errorVar = node->children[1]->value;
-                emit("if (0) {");
-                indent++;
-                emit("SigmaValue " + errorVar + " = sigma_make_string(\"Error\");");
-                for (auto& stmt : node->children[1]->children) {
-                    genStmt(stmt.get());
-                }
-                indent--;
-                emit("}");
-            }
-        }
-        
-        if (node->type == NODE_FUNC_DECL) {
-            emit("SigmaValue " + node->value + "(");
-            
-            size_t paramCount = node->children.size() - 1;
-            for (size_t i = 0; i < paramCount; i++) {
-                code << "SigmaValue " << node->children[i]->value;
-                if (i < paramCount - 1) code << ", ";
-            }
-            code << ") {\n";
-            indent++;
-            for (auto& stmt : node->children.back()->children) {
-                genStmt(stmt.get());
-            }
-            emit("return sigma_make_nil();");
-            indent--;
-            emit("}");
-        }
-        
-        if (node->type == NODE_UNARY_OP) {
-            if (node->value == "++") {
-                emit(node->children[0]->value + " = sigma_add(" + node->children[0]->value + ", sigma_make_number(1));");
-            } else if (node->value == "--") {
-                emit(node->children[0]->value + " = sigma_subtract(" + node->children[0]->value + ", sigma_make_number(1));");
-            }
-        }
-        
-        if (node->type == NODE_FUNC_CALL) {
-            std::string call = node->value + "(";
-            for (size_t i = 0; i < node->children.size(); i++) {
-                call += genExpr(node->children[i].get());
-                if (i < node->children.size() - 1) call += ", ";
-            }
-            call += ");";
-            emit(call);
+namespace {
+
+struct CE {
+    std::string c;
+    Ty t;
+    bool side;  // may have side effects
+};
+
+std::string cty(Ty t) { return t == NUM ? "double" : t == BOOL ? "bool" : "SigValue"; }
+std::string zero(Ty t) { return t == NUM ? "0" : t == BOOL ? "false" : "sig_nil()"; }
+
+std::string cNum(double d) {
+    if (std::isnan(d)) return "(0.0/0.0)";
+    if (std::isinf(d)) return d > 0 ? "(1.0/0.0)" : "(-1.0/0.0)";
+    char b[64];
+    snprintf(b, sizeof b, "%.17g", d);
+    std::string s = b;
+    if (s.find_first_of(".eE") == std::string::npos) s += ".0";
+    return d < 0 ? "(" + s + ")" : s;
+}
+
+std::string cStr(const std::string& s) {
+    std::string o = "\"";
+    for (unsigned char c : s) {
+        if (c == '"') o += "\\\"";
+        else if (c == '\\') o += "\\\\";
+        else if (c == '?') o += "\\?";
+        else if (c >= 32 && c < 127) o += (char)c;
+        else {
+            char b[8];
+            snprintf(b, sizeof b, "\\%03o", c);
+            o += b;
         }
     }
-    
+    return o + "\"";
+}
+
+std::string join(const std::vector<std::string>& xs) {
+    std::string o;
+    for (size_t i = 0; i < xs.size(); i++) o += (i ? ", " : "") + xs[i];
+    return o;
+}
+
+std::string arr(const std::vector<std::string>& xs) {
+    return xs.empty() ? "NULL" : "(SigValue[]){" + join(xs) + "}";
+}
+
+std::string L(Loc l) { return std::to_string(encodeLoc(l)); }
+
+class Gen {
 public:
-    std::string generate(ASTNode* root) {
-        code << "#include <stdio.h>\n";
-        code << "#include <stdlib.h>\n";
-        code << "#include <string.h>\n";
-        code << "#include <math.h>\n";
-        code << "#include <time.h>\n\n";
-        
-        // Type definitions
-        code << "typedef enum {\n";
-        code << "  TYPE_NIL,\n";
-        code << "  TYPE_NUMBER,\n";
-        code << "  TYPE_STRING,\n";
-        code << "  TYPE_BOOL,\n";
-        code << "  TYPE_ARRAY,\n";
-        code << "  TYPE_OBJECT\n";
-        code << "} SigmaType;\n\n";
-        
-        code << "typedef struct {\n";
-        code << "  void** items;\n";
-        code << "  int size;\n";
-        code << "  int capacity;\n";
-        code << "} SigmaArray;\n\n";
-        
-        code << "typedef struct {\n";
-        code << "  char** keys;\n";
-        code << "  void** values;\n";
-        code << "  int size;\n";
-        code << "  int capacity;\n";
-        code << "} SigmaObject;\n\n";
-        
-        code << "typedef struct SigmaValue {\n";
-        code << "  SigmaType type;\n";
-        code << "  union {\n";
-        code << "    double number;\n";
-        code << "    char* string;\n";
-        code << "    int boolean;\n";
-        code << "    SigmaArray* array;\n";
-        code << "    SigmaObject* object;\n";
-        code << "  } as;\n";
-        code << "} SigmaValue;\n\n";
-        
-        // Forward declarations
-        code << "SigmaValue sigma_make_nil();\n";
-        code << "SigmaValue sigma_make_number(double n);\n";
-        code << "SigmaValue sigma_make_bool(int b);\n";
-        code << "SigmaValue sigma_make_string(const char* s);\n";
-        code << "SigmaValue sigma_make_literal(const char* literal);\n";
-        code << "int sigma_is_truthy(SigmaValue v);\n";
-        code << "void sigma_print(SigmaValue v);\n";
-        code << "void sigma_error(const char* msg);\n";
-        code << "SigmaValue sigma_input(const char* prompt);\n";
-        code << "SigmaValue sigma_type_of(SigmaValue v);\n";
-        code << "SigmaValue sigma_to_int(SigmaValue v);\n";
-        code << "SigmaValue sigma_to_dec(SigmaValue v);\n";
-        code << "SigmaValue sigma_to_str(SigmaValue v);\n";
-        code << "SigmaValue sigma_random(SigmaValue digits);\n";
-        code << "SigmaValue sigma_random_range(SigmaValue min, SigmaValue max);\n\n";
-        
-        // Basic functions
-        code << "void sigma_error(const char* msg) {\n";
-        code << "  fprintf(stderr, \"Error: %s\\n\", msg);\n";
-        code << "}\n\n";
-        
-        code << "SigmaValue sigma_make_nil() {\n";
-        code << "  SigmaValue v; v.type = TYPE_NIL; return v;\n";
-        code << "}\n\n";
-        
-        code << "SigmaValue sigma_make_number(double n) {\n";
-        code << "  SigmaValue v; v.type = TYPE_NUMBER; v.as.number = n; return v;\n";
-        code << "}\n\n";
-        
-        code << "SigmaValue sigma_make_bool(int b) {\n";
-        code << "  SigmaValue v; v.type = TYPE_BOOL; v.as.boolean = b; return v;\n";
-        code << "}\n\n";
-        
-        code << "SigmaValue sigma_make_string(const char* s) {\n";
-        code << "  SigmaValue v; v.type = TYPE_STRING;\n";
-        code << "  v.as.string = malloc(strlen(s) + 1);\n";
-        code << "  strcpy(v.as.string, s);\n";
-        code << "  return v;\n";
-        code << "}\n\n";
-        
-        code << "SigmaValue sigma_make_literal(const char* literal) {\n";
-        code << "  if (literal[0] == '\"') {\n";
-        code << "    char* str = malloc(strlen(literal) - 1);\n";
-        code << "    strncpy(str, literal + 1, strlen(literal) - 2);\n";
-        code << "    str[strlen(literal) - 2] = '\\0';\n";
-        code << "    return sigma_make_string(str);\n";
-        code << "  } else if (strcmp(literal, \"true\") == 0) {\n";
-        code << "    return sigma_make_bool(1);\n";
-        code << "  } else if (strcmp(literal, \"false\") == 0) {\n";
-        code << "    return sigma_make_bool(0);\n";
-        code << "  } else {\n";
-        code << "    return sigma_make_number(atof(literal));\n";
-        code << "  }\n";
-        code << "}\n\n";
-        
-        // Input function
-        code << "SigmaValue sigma_input(const char* prompt) {\n";
-        code << "  if (prompt && strlen(prompt) > 0) {\n";
-        code << "    printf(\"%s\", prompt);\n";
-        code << "    fflush(stdout);\n";
-        code << "  }\n";
-        code << "  char buffer[1024];\n";
-        code << "  if (fgets(buffer, sizeof(buffer), stdin) == NULL) {\n";
-        code << "    return sigma_make_string(\"\");\n";
-        code << "  }\n";
-        code << "  size_t len = strlen(buffer);\n";
-        code << "  if (len > 0 && buffer[len-1] == '\\n') {\n";
-        code << "    buffer[len-1] = '\\0';\n";
-        code << "  }\n";
-        code << "  return sigma_make_string(buffer);\n";
-        code << "}\n\n";
-        
-        // Type function
-        code << "SigmaValue sigma_type_of(SigmaValue v) {\n";
-        code << "  switch (v.type) {\n";
-        code << "    case TYPE_NIL: return sigma_make_string(\"nil\");\n";
-        code << "    case TYPE_NUMBER: {\n";
-        code << "      if (v.as.number == floor(v.as.number)) {\n";
-        code << "        return sigma_make_string(\"int\");\n";
-        code << "      } else {\n";
-        code << "        return sigma_make_string(\"dec\");\n";
-        code << "      }\n";
-        code << "    }\n";
-        code << "    case TYPE_STRING: return sigma_make_string(\"str\");\n";
-        code << "    case TYPE_BOOL: return sigma_make_string(\"bool\");\n";
-        code << "    case TYPE_ARRAY: return sigma_make_string(\"arr\");\n";
-        code << "    case TYPE_OBJECT: return sigma_make_string(\"obj\");\n";
-        code << "    default: return sigma_make_string(\"unknown\");\n";
-        code << "  }\n";
-        code << "}\n\n";
-        
-        // Type conversion functions
-        code << "SigmaValue sigma_to_int(SigmaValue v) {\n";
-        code << "  switch (v.type) {\n";
-        code << "    case TYPE_NUMBER:\n";
-        code << "      return sigma_make_number(floor(v.as.number));\n";
-        code << "    case TYPE_STRING: {\n";
-        code << "      double num = atof(v.as.string);\n";
-        code << "      return sigma_make_number(floor(num));\n";
-        code << "    }\n";
-        code << "    case TYPE_BOOL:\n";
-        code << "      return sigma_make_number(v.as.boolean ? 1.0 : 0.0);\n";
-        code << "    default:\n";
-        code << "      return sigma_make_number(0.0);\n";
-        code << "  }\n";
-        code << "}\n\n";
-        
-        code << "SigmaValue sigma_to_dec(SigmaValue v) {\n";
-        code << "  switch (v.type) {\n";
-        code << "    case TYPE_NUMBER:\n";
-        code << "      return v;\n";
-        code << "    case TYPE_STRING:\n";
-        code << "      return sigma_make_number(atof(v.as.string));\n";
-        code << "    case TYPE_BOOL:\n";
-        code << "      return sigma_make_number(v.as.boolean ? 1.0 : 0.0);\n";
-        code << "    default:\n";
-        code << "      return sigma_make_number(0.0);\n";
-        code << "  }\n";
-        code << "}\n\n";
-        
-        code << "SigmaValue sigma_to_str(SigmaValue v) {\n";
-        code << "  char buffer[64];\n";
-        code << "  switch (v.type) {\n";
-        code << "    case TYPE_NIL:\n";
-        code << "      return sigma_make_string(\"nil\");\n";
-        code << "    case TYPE_NUMBER:\n";
-        code << "      if (v.as.number == floor(v.as.number)) {\n";
-        code << "        sprintf(buffer, \"%.0f\", v.as.number);\n";
-        code << "      } else {\n";
-        code << "        sprintf(buffer, \"%g\", v.as.number);\n";
-        code << "      }\n";
-        code << "      return sigma_make_string(buffer);\n";
-        code << "    case TYPE_STRING:\n";
-        code << "      return v;\n";
-        code << "    case TYPE_BOOL:\n";
-        code << "      return sigma_make_string(v.as.boolean ? \"true\" : \"false\");\n";
-        code << "    case TYPE_ARRAY:\n";
-        code << "      return sigma_make_string(\"[array]\");\n";
-        code << "    case TYPE_OBJECT:\n";
-        code << "      return sigma_make_string(\"[object]\");\n";
-        code << "    default:\n";
-        code << "      return sigma_make_string(\"unknown\");\n";
-        code << "  }\n";
-        code << "}\n\n";
-        
-        // Random number functions
-        code << "SigmaValue sigma_random(SigmaValue digits) {\n";
-        code << "  static int seeded = 0;\n";
-        code << "  if (!seeded) {\n";
-        code << "    srand(time(NULL));\n";
-        code << "    seeded = 1;\n";
-        code << "  }\n";
-        code << "  int d = (int)digits.as.number;\n";
-        code << "  if (d <= 0) d = 1;\n";
-        code << "  if (d > 9) d = 9;\n";
-        code << "  int min = 1;\n";
-        code << "  int max = 9;\n";
-        code << "  for (int i = 1; i < d; i++) {\n";
-        code << "    min *= 10;\n";
-        code << "    max = max * 10 + 9;\n";
-        code << "  }\n";
-        code << "  int result = min + rand() % (max - min + 1);\n";
-        code << "  return sigma_make_number((double)result);\n";
-        code << "}\n\n";
-        
-        code << "SigmaValue sigma_random_range(SigmaValue min_val, SigmaValue max_val) {\n";
-        code << "  static int seeded = 0;\n";
-        code << "  if (!seeded) {\n";
-        code << "    srand(time(NULL));\n";
-        code << "    seeded = 1;\n";
-        code << "  }\n";
-        code << "  int min = (int)min_val.as.number;\n";
-        code << "  int max = (int)max_val.as.number;\n";
-        code << "  if (min > max) {\n";
-        code << "    int temp = min;\n";
-        code << "    min = max;\n";
-        code << "    max = temp;\n";
-        code << "  }\n";
-        code << "  int result = min + rand() % (max - min + 1);\n";
-        code << "  return sigma_make_number((double)result);\n";
-        code << "}\n\n";
-        
-        // Array functions
-        code << "SigmaValue sigma_make_array() {\n";
-        code << "  SigmaValue v;\n";
-        code << "  v.type = TYPE_ARRAY;\n";
-        code << "  v.as.array = malloc(sizeof(SigmaArray));\n";
-        code << "  v.as.array->items = malloc(sizeof(void*) * 10);\n";
-        code << "  v.as.array->size = 0;\n";
-        code << "  v.as.array->capacity = 10;\n";
-        code << "  return v;\n";
-        code << "}\n\n";
-        
-        code << "void sigma_array_push(SigmaValue arr, SigmaValue val) {\n";
-        code << "  if (arr.type != TYPE_ARRAY) return;\n";
-        code << "  if (arr.as.array->size >= arr.as.array->capacity) {\n";
-        code << "    arr.as.array->capacity *= 2;\n";
-        code << "    arr.as.array->items = realloc(arr.as.array->items, sizeof(void*) * arr.as.array->capacity);\n";
-        code << "  }\n";
-        code << "  SigmaValue* newVal = malloc(sizeof(SigmaValue));\n";
-        code << "  *newVal = val;\n";
-        code << "  arr.as.array->items[arr.as.array->size++] = newVal;\n";
-        code << "}\n\n";
-        
-        code << "SigmaValue sigma_array_get(SigmaValue arr, SigmaValue idx) {\n";
-        code << "  if (arr.type != TYPE_ARRAY || idx.type != TYPE_NUMBER) return sigma_make_nil();\n";
-        code << "  int i = (int)idx.as.number;\n";
-        code << "  if (i < 0 || i >= arr.as.array->size) return sigma_make_nil();\n";
-        code << "  return *(SigmaValue*)arr.as.array->items[i];\n";
-        code << "}\n\n";
-        
-        code << "void sigma_array_set(SigmaValue arr, SigmaValue idx, SigmaValue val) {\n";
-        code << "  if (arr.type != TYPE_ARRAY || idx.type != TYPE_NUMBER) return;\n";
-        code << "  int i = (int)idx.as.number;\n";
-        code << "  if (i < 0 || i >= arr.as.array->size) return;\n";
-        code << "  *(SigmaValue*)arr.as.array->items[i] = val;\n";
-        code << "}\n\n";
-        
-        code << "SigmaValue sigma_array_sort(SigmaValue arr, SigmaValue order) {\n";
-        code << "  if (arr.type != TYPE_ARRAY) return arr;\n";
-        code << "  int ascending = 1;\n";
-        code << "  if (order.type == TYPE_STRING && strcmp(order.as.string, \"desc\") == 0) {\n";
-        code << "    ascending = 0;\n";
-        code << "  }\n";
-        code << "  for (int i = 0; i < arr.as.array->size - 1; i++) {\n";
-        code << "    for (int j = 0; j < arr.as.array->size - i - 1; j++) {\n";
-        code << "      SigmaValue* a = (SigmaValue*)arr.as.array->items[j];\n";
-        code << "      SigmaValue* b = (SigmaValue*)arr.as.array->items[j + 1];\n";
-        code << "      int shouldSwap = 0;\n";
-        code << "      if (ascending && a->type == TYPE_NUMBER && b->type == TYPE_NUMBER && a->as.number > b->as.number) shouldSwap = 1;\n";
-        code << "      if (!ascending && a->type == TYPE_NUMBER && b->type == TYPE_NUMBER && a->as.number < b->as.number) shouldSwap = 1;\n";
-        code << "      if (shouldSwap) {\n";
-        code << "        void* temp = arr.as.array->items[j];\n";
-        code << "        arr.as.array->items[j] = arr.as.array->items[j + 1];\n";
-        code << "        arr.as.array->items[j + 1] = temp;\n";
-        code << "      }\n";
-        code << "    }\n";
-        code << "  }\n";
-        code << "  return arr;\n";
-        code << "}\n\n";
-        
-        // Object functions
-        code << "SigmaValue sigma_make_object() {\n";
-        code << "  SigmaValue v;\n";
-        code << "  v.type = TYPE_OBJECT;\n";
-        code << "  v.as.object = malloc(sizeof(SigmaObject));\n";
-        code << "  v.as.object->keys = malloc(sizeof(char*) * 10);\n";
-        code << "  v.as.object->values = malloc(sizeof(void*) * 10);\n";
-        code << "  v.as.object->size = 0;\n";
-        code << "  v.as.object->capacity = 10;\n";
-        code << "  return v;\n";
-        code << "}\n\n";
-        
-        code << "void sigma_object_set(SigmaValue obj, const char* key, SigmaValue val) {\n";
-        code << "  if (obj.type != TYPE_OBJECT) return;\n";
-        code << "  for (int i = 0; i < obj.as.object->size; i++) {\n";
-        code << "    if (strcmp(obj.as.object->keys[i], key) == 0) {\n";
-        code << "      *(SigmaValue*)obj.as.object->values[i] = val;\n";
-        code << "      return;\n";
-        code << "    }\n";
-        code << "  }\n";
-        code << "  if (obj.as.object->size >= obj.as.object->capacity) {\n";
-        code << "    obj.as.object->capacity *= 2;\n";
-        code << "    obj.as.object->keys = realloc(obj.as.object->keys, sizeof(char*) * obj.as.object->capacity);\n";
-        code << "    obj.as.object->values = realloc(obj.as.object->values, sizeof(void*) * obj.as.object->capacity);\n";
-        code << "  }\n";
-        code << "  obj.as.object->keys[obj.as.object->size] = malloc(strlen(key) + 1);\n";
-        code << "  strcpy(obj.as.object->keys[obj.as.object->size], key);\n";
-        code << "  SigmaValue* newVal = malloc(sizeof(SigmaValue));\n";
-        code << "  *newVal = val;\n";
-        code << "  obj.as.object->values[obj.as.object->size++] = newVal;\n";
-        code << "}\n\n";
-        
-        code << "SigmaValue sigma_object_get(SigmaValue obj, const char* key) {\n";
-        code << "  if (obj.type != TYPE_OBJECT) return sigma_make_nil();\n";
-        code << "  for (int i = 0; i < obj.as.object->size; i++) {\n";
-        code << "    if (strcmp(obj.as.object->keys[i], key) == 0) {\n";
-        code << "      return *(SigmaValue*)obj.as.object->values[i];\n";
-        code << "    }\n";
-        code << "  }\n";
-        code << "  return sigma_make_nil();\n";
-        code << "}\n\n";
-        
-        // Arithmetic operations
-        code << "SigmaValue sigma_add(SigmaValue a, SigmaValue b) {\n";
-        code << "  if (a.type == TYPE_STRING || b.type == TYPE_STRING) {\n";
-        code << "    char a_buf[64], b_buf[64];\n";
-        code << "    char* a_str = a_buf;\n";
-        code << "    char* b_str = b_buf;\n";
-        code << "    if (a.type == TYPE_STRING) {\n";
-        code << "      a_str = a.as.string;\n";
-        code << "    } else if (a.type == TYPE_NUMBER) {\n";
-        code << "      sprintf(a_buf, \"%g\", a.as.number);\n";
-        code << "    } else if (a.type == TYPE_BOOL) {\n";
-        code << "      strcpy(a_buf, a.as.boolean ? \"true\" : \"false\");\n";
-        code << "    } else {\n";
-        code << "      strcpy(a_buf, \"nil\");\n";
-        code << "    }\n";
-        code << "    if (b.type == TYPE_STRING) {\n";
-        code << "      b_str = b.as.string;\n";
-        code << "    } else if (b.type == TYPE_NUMBER) {\n";
-        code << "      sprintf(b_buf, \"%g\", b.as.number);\n";
-        code << "    } else if (b.type == TYPE_BOOL) {\n";
-        code << "      strcpy(b_buf, b.as.boolean ? \"true\" : \"false\");\n";
-        code << "    } else {\n";
-        code << "      strcpy(b_buf, \"nil\");\n";
-        code << "    }\n";
-        code << "    char* result = malloc(strlen(a_str) + strlen(b_str) + 1);\n";
-        code << "    strcpy(result, a_str);\n";
-        code << "    strcat(result, b_str);\n";
-        code << "    return sigma_make_string(result);\n";
-        code << "  }\n";
-        code << "  return sigma_make_number(a.as.number + b.as.number);\n";
-        code << "}\n\n";
-        
-        code << "SigmaValue sigma_subtract(SigmaValue a, SigmaValue b) {\n";
-        code << "  return sigma_make_number(a.as.number - b.as.number);\n";
-        code << "}\n\n";
-        
-        code << "SigmaValue sigma_multiply(SigmaValue a, SigmaValue b) {\n";
-        code << "  return sigma_make_number(a.as.number * b.as.number);\n";
-        code << "}\n\n";
-        
-        code << "SigmaValue sigma_divide(SigmaValue a, SigmaValue b) {\n";
-        code << "  return sigma_make_number(a.as.number / b.as.number);\n";
-        code << "}\n\n";
-        
-        code << "SigmaValue sigma_modulo(SigmaValue a, SigmaValue b) {\n";
-        code << "  return sigma_make_number(fmod(a.as.number, b.as.number));\n";
-        code << "}\n\n";
-        
-        // Comparison and logical operations
-        code << "SigmaValue sigma_equals(SigmaValue a, SigmaValue b) {\n";
-        code << "  if (a.type != b.type) return sigma_make_bool(0);\n";
-        code << "  if (a.type == TYPE_NUMBER) return sigma_make_bool(a.as.number == b.as.number);\n";
-        code << "  if (a.type == TYPE_STRING) return sigma_make_bool(strcmp(a.as.string, b.as.string) == 0);\n";
-        code << "  if (a.type == TYPE_BOOL) return sigma_make_bool(a.as.boolean == b.as.boolean);\n";
-        code << "  return sigma_make_bool(0);\n";
-        code << "}\n\n";
-        
-        code << "SigmaValue sigma_strict_equals(SigmaValue a, SigmaValue b) {\n";
-        code << "  if (a.type != b.type) return sigma_make_bool(0);\n";
-        code << "  if (a.type == TYPE_NUMBER) return sigma_make_bool(a.as.number == b.as.number);\n";
-        code << "  if (a.type == TYPE_STRING) return sigma_make_bool(strcmp(a.as.string, b.as.string) == 0);\n";
-        code << "  if (a.type == TYPE_BOOL) return sigma_make_bool(a.as.boolean == b.as.boolean);\n";
-        code << "  return sigma_make_bool(0);\n";
-        code << "}\n\n";
-        
-        code << "SigmaValue sigma_not_equals(SigmaValue a, SigmaValue b) {\n";
-        code << "  return sigma_make_bool(!sigma_is_truthy(sigma_equals(a, b)));\n";
-        code << "}\n\n";
-        
-        code << "SigmaValue sigma_less_than(SigmaValue a, SigmaValue b) {\n";
-        code << "  return sigma_make_bool(a.as.number < b.as.number);\n";
-        code << "}\n\n";
-        
-        code << "SigmaValue sigma_greater_than(SigmaValue a, SigmaValue b) {\n";
-        code << "  return sigma_make_bool(a.as.number > b.as.number);\n";
-        code << "}\n\n";
-        
-        code << "SigmaValue sigma_less_equal(SigmaValue a, SigmaValue b) {\n";
-        code << "  return sigma_make_bool(a.as.number <= b.as.number);\n";
-        code << "}\n\n";
-        
-        code << "SigmaValue sigma_greater_equal(SigmaValue a, SigmaValue b) {\n";
-        code << "  return sigma_make_bool(a.as.number >= b.as.number);\n";
-        code << "}\n\n";
-        
-        code << "SigmaValue sigma_logical_and(SigmaValue a, SigmaValue b) {\n";
-        code << "  return sigma_make_bool(sigma_is_truthy(a) && sigma_is_truthy(b));\n";
-        code << "}\n\n";
-        
-        code << "SigmaValue sigma_logical_or(SigmaValue a, SigmaValue b) {\n";
-        code << "  return sigma_make_bool(sigma_is_truthy(a) || sigma_is_truthy(b));\n";
-        code << "}\n\n";
-        
-        // Truthiness and printing
-        code << "int sigma_is_truthy(SigmaValue v) {\n";
-        code << "  switch (v.type) {\n";
-        code << "    case TYPE_NIL: return 0;\n";
-        code << "    case TYPE_BOOL: return v.as.boolean;\n";
-        code << "    case TYPE_NUMBER: return v.as.number != 0;\n";
-        code << "    case TYPE_STRING: return strlen(v.as.string) > 0;\n";
-        code << "    default: return 1;\n";
-        code << "  }\n";
-        code << "}\n\n";
-        
-        code << "void sigma_print(SigmaValue v) {\n";
-        code << "  switch (v.type) {\n";
-        code << "    case TYPE_NIL: printf(\"nil\\n\"); break;\n";
-        code << "    case TYPE_NUMBER: {\n";
-        code << "      double num = v.as.number;\n";
-        code << "      if (num == floor(num)) {\n";
-        code << "        printf(\"%g\\n\", num);\n";
-        code << "      } else {\n";
-        code << "        printf(\"%.2f\\n\", num);\n";
-        code << "      }\n";
-        code << "      break;\n";
-        code << "    }\n";
-        code << "    case TYPE_STRING: printf(\"%s\\n\", v.as.string); break;\n";
-        code << "    case TYPE_BOOL: printf(\"%s\\n\", v.as.boolean ? \"true\" : \"false\"); break;\n";
-        code << "    case TYPE_ARRAY: {\n";
-        code << "      printf(\"[\");\n";
-        code << "      for (int i = 0; i < v.as.array->size; i++) {\n";
-        code << "        SigmaValue elem = *(SigmaValue*)v.as.array->items[i];\n";
-        code << "        if (elem.type == TYPE_NUMBER) printf(\"%g\", elem.as.number);\n";
-        code << "        else if (elem.type == TYPE_STRING) printf(\"\\\"%s\\\"\", elem.as.string);\n";
-        code << "        if (i < v.as.array->size - 1) printf(\", \");\n";
-        code << "      }\n";
-        code << "      printf(\"]\\n\");\n";
-        code << "      break;\n";
-        code << "    }\n";
-        code << "    case TYPE_OBJECT: printf(\"<object>\\n\"); break;\n";
-        code << "    default: printf(\"<unknown>\\n\"); break;\n";
-        code << "  }\n";
-        code << "}\n\n";
-        
-        // Generate functions
-        for (auto& child : root->children) {
-            if (child->type == NODE_FUNC_DECL) genStmt(child.get());
+    explicit Gen(Program& p) : P(p) {}
+
+    std::string run(const std::string& runtime) {
+        fn_ = P.main;
+        std::string mainBody;
+        for (auto& s : P.stmts)
+            if (s->k != NK::Func) stmt(s.get(), mainBody, 1);
+        for (Func* F : P.cooks) {
+            genFunction(F);
+            if (F->escapes) genWrapper(F);
         }
-        
-        // Main function
-        code << "int main() {\n";
-        indent++;
-        for (auto& child : root->children) {
-            if (child->type != NODE_FUNC_DECL) genStmt(child.get());
+
+        std::string out = "/* Generated by the Sigma compiler " SIGMA_VERSION ". */\n";
+        out += runtime;
+        out += "\n/* ---- program ---- */\n";
+        out += "static const char* sig_files_[] = {";
+        for (const auto& f : g_sources.files) out += cStr(f.path) + ", ";
+        out += "NULL};\n";
+        for (size_t i = 0; i < pool_.size(); i++) out += "static SigValue sk_" + std::to_string(i) + ";\n";
+        for (Sym* s : P.main->locals)
+            if (s->usedInFn) out += "static " + cty(s->ty) + " " + s->cname + ";\n";
+        out += "\n" + protos_ + "\n" + objects_ + "\n" + defs_;
+        out += "int main(int argc, char** argv) {\n";
+        out += "    sig_init(argc, argv, sig_files_);\n";
+        for (size_t i = 0; i < pool_.size(); i++)
+            out += "    sk_" + std::to_string(i) + " = sig_str_lit(" + cStr(pool_[i]) + ", " +
+                   std::to_string(pool_[i].size()) + ");\n";
+        for (Sym* s : P.main->locals)
+            if (!s->usedInFn) out += "    " + decl(s) + ";\n";
+        out += mainBody;
+        out += "    fflush(stdout);\n    return 0;\n}\n";
+        return out;
+    }
+
+private:
+    Program& P;
+    std::map<std::string, int> poolIndex_;
+    std::vector<std::string> pool_;
+    int tmpN_ = 0, tryN_ = 0;
+    std::string protos_, objects_, defs_;
+    Func* fn_ = nullptr;
+    struct Ctx {
+        bool loop;
+        std::string tryVar;
+    };
+    std::vector<Ctx> ctx_;
+
+    std::string lit(const std::string& s) {
+        auto it = poolIndex_.find(s);
+        if (it != poolIndex_.end()) return "sk_" + std::to_string(it->second);
+        int id = (int)pool_.size();
+        poolIndex_[s] = id;
+        pool_.push_back(s);
+        return "sk_" + std::to_string(id);
+    }
+
+    std::string tmp() { return "_t" + std::to_string(++tmpN_); }
+
+    std::string decl(Sym* s) {
+        return std::string(s->isVolatile ? "volatile " : "") + cty(s->ty) + " " + s->cname + " = " + zero(s->ty);
+    }
+
+    // ------------------------------------------------------------ conversions
+
+    std::string box(const CE& e) {
+        if (e.t == NUM) return "sig_num(" + e.c + ")";
+        if (e.t == BOOL) return "sig_bool(" + e.c + ")";
+        return e.c;
+    }
+
+    std::string asNum(const CE& e, Loc l) {
+        if (e.t == NUM) return e.c;
+        return "sig_as_num(" + box(e) + ", " + L(l) + ")";
+    }
+
+    std::string truthy(const CE& e) {
+        if (e.t == BOOL) return e.c;
+        if (e.t == NUM) return "(" + e.c + " != 0)";
+        return "sig_truthy(" + e.c + ")";
+    }
+
+    std::string conv(const CE& e, Ty to, Loc l) {
+        if (to == DYN) return box(e);
+        if (to == NUM) return asNum(e, l);
+        return truthy(e);
+    }
+
+    // Evaluate operands left to right when any of them has side effects.
+    CE seq(std::vector<CE> in, const std::function<CE(std::vector<CE>&)>& build) {
+        bool any = false;
+        for (auto& a : in) any = any || a.side;
+        if (!any || in.size() < 2) {
+            CE r = build(in);
+            r.side = r.side || any;
+            return r;
         }
-        emit("return 0;");
-        indent--;
-        code << "}\n";
-        
-        return code.str();
+        std::string pre;
+        for (auto& a : in) {
+            std::string n = tmp();
+            pre += cty(a.t) + " " + n + " = " + a.c + "; ";
+            a = CE{n, a.t, false};
+        }
+        CE r = build(in);
+        return CE{"({ " + pre + r.c + "; })", r.t, true};
+    }
+
+    // ------------------------------------------------------------ expressions
+
+    CE expr(Node* e) {
+        switch (e->k) {
+        case NK::Num: return {cNum(e->num), NUM, false};
+        case NK::Bool: return {e->flag ? "true" : "false", BOOL, false};
+        case NK::Nil: return {"sig_nil()", DYN, false};
+        case NK::Str: return {lit(e->s), DYN, false};
+        case NK::Interp:
+        case NK::List: {
+            std::vector<CE> parts;
+            for (auto& k : e->kids) parts.push_back(expr(k.get()));
+            const char* f = e->k == NK::Interp ? "sig_interp" : "sig_list_of";
+            return seq(parts, [&](std::vector<CE>& a) {
+                std::vector<std::string> xs;
+                for (auto& x : a) xs.push_back(box(x));
+                return CE{std::string(f) + "(" + std::to_string(xs.size()) + ", " + arr(xs) + ")", DYN, false};
+            });
+        }
+        case NK::Map: {
+            std::vector<CE> vals;
+            for (auto& k : e->kids) vals.push_back(expr(k.get()));
+            std::vector<std::string> keys;
+            for (auto& k : e->names) keys.push_back(lit(k));
+            return seq(vals, [&](std::vector<CE>& a) {
+                std::vector<std::string> xs;
+                for (auto& x : a) xs.push_back(box(x));
+                return CE{"sig_map_of(" + std::to_string(xs.size()) + ", " + arr(keys) + ", " + arr(xs) + ")", DYN, false};
+            });
+        }
+        case NK::Range: {
+            Loc l = e->loc;
+            bool incl = e->flag;
+            return seq({expr(e->kids[0].get()), expr(e->kids[1].get())}, [&](std::vector<CE>& a) {
+                return CE{"sig_range(" + asNum(a[0], l) + ", " + asNum(a[1], l) + ", " + (incl ? "true" : "false") +
+                              ", " + L(l) + ")",
+                          DYN, false};
+            });
+        }
+        case NK::Ident:
+            if (e->sym) return {e->sym->cname, e->sym->ty, false};
+            return {"sig_fnv(&fo_" + e->fn->name + ")", DYN, false};
+        case NK::Unary: {
+            CE a = expr(e->kids[0].get());
+            if (e->s == "-") return {"(-" + asNum(a, e->loc) + ")", NUM, a.side};
+            return {"(!" + truthy(a) + ")", BOOL, a.side};
+        }
+        case NK::Binary: {
+            std::string op = e->s;
+            Loc l = e->loc;
+            return seq({expr(e->kids[0].get()), expr(e->kids[1].get())},
+                       [&](std::vector<CE>& a) { return binop(op, a[0], a[1], l); });
+        }
+        case NK::And:
+        case NK::Or: {
+            CE a = expr(e->kids[0].get()), b = expr(e->kids[1].get());
+            return {"(" + truthy(a) + (e->k == NK::And ? " && " : " || ") + truthy(b) + ")", BOOL, a.side || b.side};
+        }
+        case NK::Call: return call(e);
+        case NK::MethodCall: return method(e);
+        case NK::Field: {
+            CE o = expr(e->kids[0].get());
+            return {"sig_field(" + box(o) + ", " + lit(e->s) + ", " + L(e->loc) + ")", DYN, o.side};
+        }
+        case NK::Index: {
+            Loc l = e->loc;
+            return seq({expr(e->kids[0].get()), expr(e->kids[1].get())}, [&](std::vector<CE>& a) {
+                return CE{"sig_index(" + box(a[0]) + ", " + box(a[1]) + ", " + L(l) + ")", DYN, false};
+            });
+        }
+        case NK::Lambda: return lambda(e);
+        default: fail(e->loc, "internal error: unexpected expression");
+        }
+    }
+
+    CE binop(const std::string& op, const CE& a, const CE& b, Loc l) {
+        std::string ln = L(l);
+        if (op == "+") {
+            if (a.t == NUM && b.t == NUM) return {"(" + a.c + " + " + b.c + ")", NUM, false};
+            return {"sig_add(" + box(a) + ", " + box(b) + ", " + ln + ")", DYN, false};
+        }
+        if (op == "-" || op == "*") return {"(" + asNum(a, l) + " " + op + " " + asNum(b, l) + ")", NUM, false};
+        if (op == "/") return {"sig_div(" + asNum(a, l) + ", " + asNum(b, l) + ", " + ln + ")", NUM, false};
+        if (op == "%") return {"sig_mod(" + asNum(a, l) + ", " + asNum(b, l) + ", " + ln + ")", NUM, false};
+        if (op == "**") return {"pow(" + asNum(a, l) + ", " + asNum(b, l) + ")", NUM, false};
+        if (op == "==" || op == "!=") {
+            std::string eq;
+            if (a.t != DYN && a.t == b.t) eq = "(" + a.c + " == " + b.c + ")";
+            else if (a.t != DYN && b.t != DYN) eq = "false";
+            else eq = "sig_eq(" + box(a) + ", " + box(b) + ")";
+            return {op == "==" ? eq : "(!" + eq + ")", BOOL, false};
+        }
+        if (a.t == NUM && b.t == NUM) return {"(" + a.c + " " + op + " " + b.c + ")", BOOL, false};
+        return {"(sig_cmp(" + box(a) + ", " + box(b) + ", " + ln + ") " + op + " 0)", BOOL, false};
+    }
+
+    CE call(Node* e) {
+        std::vector<CE> args;
+        for (size_t i = 1; i < e->kids.size(); i++) args.push_back(expr(e->kids[i].get()));
+        Loc l = e->loc;
+        if (e->fn) {
+            Func* F = e->fn;
+            return seq(args, [&](std::vector<CE>& a) {
+                std::vector<std::string> xs;
+                for (size_t i = 0; i < a.size(); i++) xs.push_back(conv(a[i], F->params[i]->ty, l));
+                return CE{F->cname + "(" + join(xs) + ")", F->ret, true};
+            });
+        }
+        if (e->builtin >= 0) return builtin(e, args);
+        std::vector<CE> all{expr(e->kids[0].get())};
+        all.insert(all.end(), args.begin(), args.end());
+        return seq(all, [&](std::vector<CE>& a) {
+            std::vector<std::string> xs;
+            for (size_t i = 1; i < a.size(); i++) xs.push_back(box(a[i]));
+            return CE{"sig_call(" + box(a[0]) + ", " + std::to_string(xs.size()) + ", " + arr(xs) + ", " + L(l) + ")",
+                      DYN, true};
+        });
+    }
+
+    CE builtin(Node* e, std::vector<CE>& args) {
+        const std::string name = builtinAt(e->builtin)->name;
+        Loc l = e->loc;
+        std::string ln = L(l);
+        return seq(args, [&](std::vector<CE>& a) -> CE {
+            auto num = [&](size_t i) { return asNum(a[i], l); };
+            auto bx = [&](size_t i) { return box(a[i]); };
+            auto boxes = [&] {
+                std::vector<std::string> xs;
+                for (auto& x : a) xs.push_back(box(x));
+                return xs;
+            };
+            if (name == "yap") {
+                if (a.size() == 1 && a[0].t == NUM) return {"sig_yap_num(" + a[0].c + ")", DYN, true};
+                if (a.size() == 1) return {"sig_yap1(" + bx(0) + ")", DYN, true};
+                return {"sig_yap(" + std::to_string(a.size()) + ", " + arr(boxes()) + ")", DYN, true};
+            }
+            if (name == "ask") return {"sig_ask(" + (a.empty() ? std::string("sig_nil()") : bx(0)) + ")", DYN, true};
+            if (name == "len") return {"sig_len(" + bx(0) + ", " + ln + ")", NUM, false};
+            if (name == "type") return {"sig_type(" + bx(0) + ")", DYN, false};
+            if (name == "num") return {"sig_tonum(" + bx(0) + ")", DYN, false};
+            if (name == "int") return {"sig_toint(" + bx(0) + ")", DYN, false};
+            if (name == "str") return {"sig_tostr(" + bx(0) + ")", DYN, false};
+            if (name == "abs") return {"fabs(" + num(0) + ")", NUM, false};
+            if (name == "floor" || name == "ceil" || name == "round" || name == "sqrt")
+                return {name + "(" + num(0) + ")", NUM, false};
+            if (name == "pow") return {"pow(" + num(0) + ", " + num(1) + ")", NUM, false};
+            if (name == "min" || name == "max") {
+                bool allNum = a.size() >= 2;
+                for (auto& x : a) allNum = allNum && x.t == NUM;
+                if (allNum) {
+                    std::string c = a[0].c;
+                    for (size_t i = 1; i < a.size(); i++) c = "sig_" + name + "2(" + c + ", " + a[i].c + ")";
+                    return {c, NUM, false};
+                }
+                return {"sig_minmax(" + std::to_string(a.size()) + ", " + arr(boxes()) + ", " +
+                            (name == "max" ? "true" : "false") + ", " + ln + ")",
+                        DYN, false};
+            }
+            if (name == "rand") return {"sig_rand()", NUM, true};
+            if (name == "rand_int") return {"sig_rand_int(" + num(0) + ", " + num(1) + ", " + ln + ")", NUM, true};
+            if (name == "now") return {"sig_now()", NUM, true};
+            if (name == "sleep") return {"sig_sleep(" + num(0) + ")", DYN, true};
+            if (name == "args") return {"sig_args()", DYN, false};
+            if (name == "exit") return {"sig_exit_v(" + (a.empty() ? std::string("0") : num(0)) + ")", DYN, true};
+            if (name == "read_file") return {"sig_read_file(" + bx(0) + ", " + ln + ")", DYN, true};
+            if (name == "write_file" || name == "append_file")
+                return {"sig_write_file(" + bx(0) + ", " + bx(1) + ", " + (name == "append_file" ? "true" : "false") +
+                            ", " + ln + ")",
+                        DYN, true};
+            if (name == "file_exists") return {"sig_file_exists(" + bx(0) + ", " + ln + ")", BOOL, true};
+            if (name == "vibecheck")
+                return {"sig_vibecheck(" + bx(0) + ", " + (a.size() > 1 ? bx(1) : std::string("sig_nil()")) + ", " + ln +
+                            ")",
+                        DYN, true};
+            fail(l, "internal error: unknown builtin " + name);
+        });
+    }
+
+    CE method(Node* e) {
+        std::vector<CE> all;
+        for (auto& k : e->kids) all.push_back(expr(k.get()));
+        const MethodInfo* m = findMethod(e->s);
+        Loc l = e->loc;
+        std::string name = e->s;
+        return seq(all, [&](std::vector<CE>& a) {
+            if (m) {
+                std::string c = "sig_m_" + name + "(" + box(a[0]);
+                for (int i = 1; i <= m->maxArgs; i++) c += ", " + (i < (int)a.size() ? box(a[i]) : std::string("sig_nil()"));
+                return CE{c + ", " + L(l) + ")", DYN, true};
+            }
+            std::vector<std::string> xs;
+            for (size_t i = 1; i < a.size(); i++) xs.push_back(box(a[i]));
+            return CE{"sig_m_call(" + box(a[0]) + ", " + lit(name) + ", " + std::to_string(xs.size()) + ", " + arr(xs) +
+                          ", " + L(l) + ")",
+                      DYN, true};
+        });
+    }
+
+    CE lambda(Node* e) {
+        Func* F = e->fn;
+        genFunction(F);
+        std::string arity = std::to_string(F->params.size());
+        if (F->captures.empty()) {
+            std::string obj = "lo_" + std::to_string(F->id);
+            objects_ += "static SigFn " + obj + " = { " + F->cname + ", " + arity + ", 0, \"lambda\" };\n";
+            return {"sig_fnv(&" + obj + ")", DYN, false};
+        }
+        std::vector<std::string> caps;
+        for (Sym* c : F->captures) caps.push_back(box(CE{c->outer->cname, c->outer->ty, false}));
+        return {"sig_make_fn(" + F->cname + ", " + arity + ", \"lambda\", " + std::to_string(caps.size()) + ", " +
+                    arr(caps) + ")",
+                DYN, false};
+    }
+
+    // ------------------------------------------------------------ statements
+
+    static void line(std::string& o, int ind, const std::string& s) {
+        o.append((size_t)ind * 4, ' ');
+        o += s;
+        o += '\n';
+    }
+
+    void stmts(Node* block, std::string& o, int ind) {
+        for (auto& s : block->kids) stmt(s.get(), o, ind);
+    }
+
+    void stmt(Node* n, std::string& o, int ind) {
+        switch (n->k) {
+        case NK::Assign: assign(n, o, ind); break;
+        case NK::Lock: {
+            CE v = expr(n->kids[0].get());
+            line(o, ind, n->sym->cname + " = " + conv(v, n->sym->ty, n->loc) + ";");
+            break;
+        }
+        case NK::ExprStmt: line(o, ind, "(void)" + expr(n->kids[0].get()).c + ";"); break;
+        case NK::If: {
+            size_t i = 0;
+            for (; i + 1 < n->kids.size(); i += 2) {
+                CE c = expr(n->kids[i].get());
+                line(o, ind, std::string(i == 0 ? "if (" : "} else if (") + truthy(c) + ") {");
+                stmts(n->kids[i + 1].get(), o, ind + 1);
+            }
+            if (i < n->kids.size()) {
+                line(o, ind, "} else {");
+                stmts(n->kids[i].get(), o, ind + 1);
+            }
+            line(o, ind, "}");
+            break;
+        }
+        case NK::While:
+            if (n->kids.size() == 2) line(o, ind, "while (" + truthy(expr(n->kids[0].get())) + ") {");
+            else line(o, ind, "for (;;) {");
+            ctx_.push_back({true, ""});
+            stmts(n->kids.back().get(), o, ind + 1);
+            ctx_.pop_back();
+            line(o, ind, "}");
+            break;
+        case NK::ForIn: forIn(n, o, ind); break;
+        case NK::Dip:
+        case NK::Skip: {
+            std::string restore;  // leaving yolo blocks: pop their handlers
+            for (int i = (int)ctx_.size() - 1; i >= 0 && !ctx_[i].loop; i--) restore = ctx_[i].tryVar;
+            if (!restore.empty()) line(o, ind, "sig_try_top = " + restore + ".prev;");
+            line(o, ind, n->k == NK::Dip ? "break;" : "continue;");
+            break;
+        }
+        case NK::Serve: {
+            std::string outer;
+            for (auto& c : ctx_)
+                if (!c.loop) { outer = c.tryVar; break; }
+            Ty rt = fn_->ret;
+            std::string val = n->kids.empty() ? zero(rt) : conv(expr(n->kids[0].get()), rt, n->loc);
+            if (outer.empty()) line(o, ind, "return " + val + ";");
+            else line(o, ind, "{ " + cty(rt) + " _r = " + val + "; sig_try_top = " + outer + ".prev; return _r; }");
+            break;
+        }
+        case NK::Yeet: line(o, ind, "sig_throw(" + box(expr(n->kids[0].get())) + ", " + L(n->loc) + ");"); break;
+        case NK::Try: {
+            std::string t = "_try" + std::to_string(++tryN_);
+            line(o, ind, "{");
+            line(o, ind + 1, "SigTry " + t + ";");
+            line(o, ind + 1, t + ".prev = sig_try_top;");
+            line(o, ind + 1, "sig_try_top = &" + t + ";");
+            line(o, ind + 1, "if (setjmp(" + t + ".jb) == 0) {");
+            ctx_.push_back({false, t});
+            stmts(n->kids[0].get(), o, ind + 2);
+            ctx_.pop_back();
+            line(o, ind + 2, "sig_try_top = " + t + ".prev;");
+            line(o, ind + 1, "} else {");
+            line(o, ind + 2, "sig_try_top = " + t + ".prev;");
+            if (n->sym) line(o, ind + 2, n->sym->cname + " = " + conv(CE{"sig_err_val", DYN, false}, n->sym->ty, n->loc) + ";");
+            if (n->kids.size() > 1) stmts(n->kids[1].get(), o, ind + 2);
+            line(o, ind + 1, "}");
+            line(o, ind, "}");
+            break;
+        }
+        case NK::Block: stmts(n, o, ind); break;
+        case NK::Func:
+        case NK::Yoink: break;
+        default: fail(n->loc, "internal error: unexpected statement");
+        }
+    }
+
+    void assign(Node* n, std::string& o, int ind) {
+        Node* t = n->kids[0].get();
+        Loc l = n->loc;
+        const std::string op = n->s;
+        CE v = expr(n->kids[1].get());
+        if (t->k == NK::Ident) {
+            Sym* s = t->sym;
+            CE r = v;
+            if (!op.empty())
+                r = seq({CE{s->cname, s->ty, false}, v}, [&](std::vector<CE>& a) { return binop(op, a[0], a[1], l); });
+            line(o, ind, s->cname + " = " + conv(r, s->ty, l) + ";");
+            return;
+        }
+        bool isField = t->k == NK::Field;
+        std::string ln = L(l);
+        CE obj = expr(t->kids[0].get());
+        if (op.empty()) {
+            std::vector<CE> parts{obj};
+            if (!isField) parts.push_back(expr(t->kids[1].get()));
+            parts.push_back(v);
+            CE r = seq(parts, [&](std::vector<CE>& a) {
+                if (isField)
+                    return CE{"sig_set_field(" + box(a[0]) + ", " + lit(t->s) + ", " + box(a[1]) + ", " + ln + ")", DYN, true};
+                return CE{"sig_set_index(" + box(a[0]) + ", " + box(a[1]) + ", " + box(a[2]) + ", " + ln + ")", DYN, true};
+            });
+            line(o, ind, "(void)" + r.c + ";");
+            return;
+        }
+        // Compound assignment: evaluate the object (and key) exactly once.
+        line(o, ind, "{");
+        line(o, ind + 1, "SigValue _o = " + box(obj) + ";");
+        std::string get;
+        if (isField) {
+            get = "sig_field(_o, " + lit(t->s) + ", " + ln + ")";
+        } else {
+            line(o, ind + 1, "SigValue _k = " + box(expr(t->kids[1].get())) + ";");
+            get = "sig_index(_o, _k, " + ln + ")";
+        }
+        line(o, ind + 1, "SigValue _old = " + get + ";");
+        line(o, ind + 1, cty(v.t) + " _v = " + v.c + ";");
+        std::string nv = box(binop(op, CE{"_old", DYN, false}, CE{"_v", v.t, false}, l));
+        line(o, ind + 1, isField ? "sig_set_field(_o, " + lit(t->s) + ", " + nv + ", " + ln + ");"
+                                 : "sig_set_index(_o, _k, " + nv + ", " + ln + ");");
+        line(o, ind, "}");
+    }
+
+    void forIn(Node* n, std::string& o, int ind) {
+        Node* it = n->kids[0].get();
+        line(o, ind, "{");
+        if (it->k == NK::Range) {
+            // grind i in a..b  ->  a plain C counting loop
+            CE a = expr(it->kids[0].get()), b = expr(it->kids[1].get());
+            std::string s = tmp(), e = tmp(), k = tmp();
+            line(o, ind + 1, "double " + s + " = " + asNum(a, it->loc) + ";");
+            line(o, ind + 1, "double " + e + " = " + asNum(b, it->loc) + ";");
+            line(o, ind + 1, "for (double " + k + " = " + s + "; " + k + (it->flag ? " <= " : " < ") + e + "; " + k +
+                                 " += 1) {");
+            line(o, ind + 2, n->sym->cname + " = " + conv(CE{k, NUM, false}, n->sym->ty, n->loc) + ";");
+        } else {
+            CE src = expr(it);
+            std::string sv = tmp(), lst = tmp(), i = tmp(), ism = tmp();
+            line(o, ind + 1, "SigValue " + sv + " = " + box(src) + ";");
+            line(o, ind + 1, "SigList* " + lst + " = sig_iterable(" + sv + ", " + L(it->loc) + ");");
+            if (n->sym2) line(o, ind + 1, "bool " + ism + " = " + sv + ".t == T_MAP;");
+            line(o, ind + 1, "for (int64_t " + i + " = 0; " + i + " < " + lst + "->len; " + i + "++) {");
+            std::string item = lst + "->items[" + i + "]";
+            if (!n->sym2) {
+                line(o, ind + 2, n->sym->cname + " = " + item + ";");
+            } else {
+                line(o, ind + 2, n->sym->cname + " = " + ism + " ? " + item + " : sig_num((double)" + i + ");");
+                line(o, ind + 2, n->sym2->cname + " = " + ism + " ? sig_map_at(" + sv + ".u.m, " + item + ") : " + item + ";");
+            }
+        }
+        ctx_.push_back({true, ""});
+        stmts(n->kids[1].get(), o, ind + 2);
+        ctx_.pop_back();
+        line(o, ind + 1, "}");
+        line(o, ind, "}");
+    }
+
+    // ------------------------------------------------------------ functions
+
+    void genFunction(Func* F) {
+        Func* savedFn = fn_;
+        auto savedCtx = ctx_;
+        fn_ = F;
+        ctx_.clear();
+
+        std::string body;
+        stmts(F->node->kids[0].get(), body, 1);
+
+        std::string head, pre;
+        if (F->isLambda) {
+            head = "static SigValue " + F->cname + "(SigFn* self, int argc, SigValue* argv, int line)";
+            pre += "    (void)self; (void)argc; (void)line;\n";
+            for (size_t i = 0; i < F->params.size(); i++) {
+                Sym* p = F->params[i];
+                pre += "    " + std::string(p->isVolatile ? "volatile " : "") + "SigValue " + p->cname + " = argv[" +
+                       std::to_string(i) + "];\n";
+            }
+            for (size_t i = 0; i < F->captures.size(); i++) {
+                Sym* c = F->captures[i];
+                std::string src = "self->caps[" + std::to_string(i) + "]";
+                std::string v = c->ty == NUM ? src + ".u.n" : c->ty == BOOL ? src + ".u.b" : src;
+                pre += "    " + cty(c->ty) + " " + c->cname + " = " + v + ";\n";
+            }
+        } else {
+            std::string ps;
+            for (Sym* p : F->params) {
+                if (!ps.empty()) ps += ", ";
+                if (p->isVolatile) {
+                    ps += cty(p->ty) + " p_" + p->name;
+                    pre += "    volatile " + cty(p->ty) + " " + p->cname + " = p_" + p->name + ";\n";
+                } else {
+                    ps += cty(p->ty) + " " + p->cname;
+                }
+            }
+            head = "static " + cty(F->ret) + " " + F->cname + "(" + (ps.empty() ? "void" : ps) + ")";
+        }
+        for (Sym* s : F->locals) pre += "    " + decl(s) + ";\n";
+
+        protos_ += head + ";\n";
+        defs_ += head + " {\n" + pre + body + "    return " + zero(F->ret) + ";\n}\n\n";
+        fn_ = savedFn;
+        ctx_ = savedCtx;
+    }
+
+    // Lets a cooked function be used as a value (e.g. nums.map(double)).
+    void genWrapper(Func* F) {
+        std::vector<std::string> args;
+        for (size_t i = 0; i < F->params.size(); i++) args.push_back("argv[" + std::to_string(i) + "]");
+        std::string w = "w_" + F->name;
+        std::string head = "static SigValue " + w + "(SigFn* self, int argc, SigValue* argv, int line)";
+        protos_ += head + ";\n";
+        defs_ += head + " {\n    (void)self; (void)argc; (void)line;\n    return " +
+                 box(CE{F->cname + "(" + join(args) + ")", F->ret, true}) + ";\n}\n\n";
+        objects_ += "static SigFn fo_" + F->name + " = { " + w + ", " + std::to_string(F->params.size()) + ", 0, " +
+                    cStr(F->name) + " };\n";
     }
 };
+
+}  // namespace
+
+std::string generateC(Program& prog, const std::string& runtime) { return Gen(prog).run(runtime); }

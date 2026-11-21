@@ -1,0 +1,20 @@
+-- Number guessing game (interactive): sig examples/guess.sgm
+secret: rand_int(1, 100)
+tries: 0
+yap("I'm thinking of a number from 1 to 100.")
+grind {
+    text: ask("your guess: ")
+    fr text == nil { dip }
+    guess: num(text)
+    fr guess == nil {
+        yap("that's not a number")
+        skip
+    }
+    tries++
+    fr guess < secret { yap("higher") }
+    nah fr guess > secret { yap("lower") }
+    nah {
+        yap("you got it in {tries} tries, no cap")
+        dip
+    }
+}

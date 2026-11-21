@@ -1,0 +1,2 @@
+cook add(a, b) { serve a + b }
+yap(add(1))

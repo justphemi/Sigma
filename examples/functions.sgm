@@ -1,15 +1,28 @@
--- Functions in Sigma
+-- Functions
 
-fn add_numbers: (a, b) {
-    return a + b
+cook add(a, b) {
+    serve a + b
 }
 
-fn multiply: (x, y) {
-    return x * y
+cook fib(n) {
+    fr n < 2 { serve n }
+    serve fib(n - 1) + fib(n - 2)
 }
 
-result: add_numbers.run(10, 20)
-yap(result)
+yap(add(10, 20))
+yap("fib(25) = {fib(25)}")
 
-product: multiply.run(5, 7)
-yap(product)
+-- lambdas
+double: x => x * 2
+yap(double(21))
+
+nums: [1, 2, 3, 4, 5, 6]
+evens: nums.filter(x => x % 2 == 0)
+yap("evens: {evens}, doubled: {evens.map(double)}, total: {nums.sum()}")
+
+-- functions that make functions
+cook multiplier(k) {
+    serve x => x * k
+}
+triple: multiplier(3)
+yap(triple(7))

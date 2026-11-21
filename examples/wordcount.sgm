@@ -1,0 +1,15 @@
+-- Count words in a file: sig examples/wordcount.sgm some_file.txt
+files: args()
+fr len(files) == 0 {
+    yap("usage: sig examples/wordcount.sgm <file>")
+    exit(1)
+}
+text: read_file(files[0])
+counts: {}
+grind word in text.lower().split() {
+    counts[word]: counts.get(word, 0) + 1
+}
+yap("{len(counts)} different words")
+grind w in counts.keys().sort(k => counts[k], "desc").slice(0, 10) {
+    yap("{counts[w]}  {w}")
+}

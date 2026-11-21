@@ -1,0 +1,13 @@
+hi Sigma, you are 2
+7 2.5 1 2 1024
+3.14159 0.30000000000000004 1e+21 0 0.3333333333333333
+concat n=5 5!
+true true false nil
+5 num str list map nil fn
+100
+2
+abcd a d
+43 nil 3 -3 12true
+escapes: tab	here, brace {ok}, quote "q" 'single'
+single quotes work 2
+3 2 3 3 4 256 1 9

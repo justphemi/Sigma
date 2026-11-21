@@ -1,0 +1,8 @@
+-- Recursive Fibonacci (function-call heavy)
+cook fib(n) {
+    fr n < 2 { serve n }
+    serve fib(n - 1) + fib(n - 2)
+}
+start: now()
+r: fib(30)
+yap("fib(30): {r}  time: {round((now() - start) * 1_000_000) / 1000} ms")

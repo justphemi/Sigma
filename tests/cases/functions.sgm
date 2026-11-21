@@ -1,0 +1,58 @@
+cook add(a, b) { serve a + b }
+cook fib(n) {
+    fr n < 2 { serve n }
+    serve fib(n - 1) + fib(n - 2)
+}
+cook greet(name) { yap("hey {name}") }
+cook nothing() { }
+
+yap(add(2, 3), add("a", "b"), fib(20))
+greet("bestie")
+yap(nothing())
+
+-- globals can be read and updated from functions
+count: 0
+cook bump() { count += 1 }
+bump()
+bump()
+yap(count)
+
+-- lambdas, closures, higher-order functions
+double: x => x * 2
+yap(double(21))
+nums: [1, 2, 3, 4, 5]
+yap(nums.map(x => x * x))
+yap(nums.filter(x => x % 2 == 0))
+yap(nums.reduce((acc, x) => acc + x, 0))
+yap(nums.map((x, i) => "{i}:{x}"))
+cook make_adder(n) {
+    serve x => x + n
+}
+add10: make_adder(10)
+yap(add10(5))
+cook twice(f, x) { serve f(f(x)) }
+yap(twice(double, 3))
+cook triple(x) { serve x * 3 }
+yap(nums.map(triple))
+yap(twice(triple, 2))
+yap(triple)
+
+-- block-bodied lambda
+classify: (n) => {
+    fr n > 0 { serve "pos" }
+    serve "non-pos"
+}
+yap(classify(3), classify(-1))
+
+cook flatten(xs) {
+    out: []
+    grind x in xs {
+        fr type(x) == "list" {
+            grind y in flatten(x) { out.push(y) }
+        } nah {
+            out.push(x)
+        }
+    }
+    serve out
+}
+yap(flatten([1, [2, [3, 4]], 5]))

@@ -1,0 +1,6 @@
+grind i in 1..=100 {
+    fr i % 15 == 0 { yap("FizzBuzz") }
+    nah fr i % 3 == 0 { yap("Fizz") }
+    nah fr i % 5 == 0 { yap("Buzz") }
+    nah { yap(i) }
+}

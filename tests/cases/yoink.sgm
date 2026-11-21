@@ -1,0 +1,3 @@
+yoink "yoink_helper.sgm"
+yoink "yoink_helper.sgm"
+yap(shout(GREETING))
